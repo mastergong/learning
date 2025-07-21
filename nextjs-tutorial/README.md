@@ -48,7 +48,7 @@
 | [17](./17-internationalization.md) | Internationalization (i18n) | Multi-language Support, Localization |
 | [18](./18-seo-metadata.md) | SEO and Metadata | Meta Tags, Structured Data, OpenGraph |
 
-## 🎓 **Expert Level (บทที่ 19-25)**
+## 🎓 **Expert Level (บทที่ 19-26)**
 **การพัฒนาระดับผู้เชี่ยวชาญ**
 
 | บท | หัวข้อ | เนื้อหาหลัก |
@@ -60,6 +60,7 @@
 | [23](./23-real-world-project-1.md) | Real-world Project 1 | E-commerce Application |
 | [24](./24-real-world-project-2.md) | Real-world Project 2 | Blog Platform |
 | [25](./25-expert-tips.md) | Expert Tips & Best Practices | Career Advice, Industry Standards |
+| [26](./26-shadcn-ui.md) | การใช้งาน shadcn/ui | Component Library, Custom Components, Theming |
 
 ### 🛠️ เครื่องมือและเทคโนโลยีที่จะใช้
 

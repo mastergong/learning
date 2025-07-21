@@ -1567,6 +1567,8 @@ export class UserService {
 
 **บทก่อนหน้า**: [บทที่ 24: Performance Optimization](./24-performance-optimization.md)
 
+**บทถัดไป**: [บทที่ 26: การใช้งาน shadcn/ui](./26-shadcn-ui.md)
+
 **กลับไปหน้าหลัก**: [README](./README.md)
 
 ---
