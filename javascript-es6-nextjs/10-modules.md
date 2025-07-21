@@ -6,13 +6,13 @@
 - เรียนรู้ Dynamic Imports และ Code Splitting
 - ประยุกต์ใช้ใน Next.js สำหรับ Module Organization
 
-## 📦 Module Basics
+## 📦 ES6 Module Basics
 
 ### **📤 Export Patterns**
 
 ```javascript
 // ============= NAMED EXPORTS =============
-// math.js - Multiple named exports
+// utils/mathUtils.js
 export const PI = 3.14159;
 export const E = 2.71828;
 
@@ -24,7 +24,17 @@ export function multiply(a, b) {
   return a * b;
 }
 
-export class Calculator {
+export const divide = (a, b) => {
+  if (b === 0) throw new Error('Division by zero');
+  return a / b;
+};
+
+// Export multiple items at once
+export { add as sum, multiply as product };
+
+// ============= DEFAULT EXPORTS =============
+// utils/Calculator.js
+class Calculator {
   constructor() {
     this.history = [];
   }
@@ -35,957 +45,842 @@ export class Calculator {
     return result;
   }
   
+  subtract(a, b) {
+    const result = a - b;
+    this.history.push({ operation: 'subtract', operands: [a, b], result });
+    return result;
+  }
+  
   getHistory() {
     return [...this.history];
   }
-}
-
-// Alternative export syntax
-const subtract = (a, b) => a - b;
-const divide = (a, b) => {
-  if (b === 0) throw new Error('Division by zero');
-  return a / b;
-};
-
-export { subtract, divide };
-
-// Export with alias
-const power = (base, exponent) => Math.pow(base, exponent);
-export { power as pow };
-
-// ============= DEFAULT EXPORTS =============
-// logger.js - Single default export
-class Logger {
-  constructor(name) {
-    this.name = name;
-    this.logs = [];
-  }
   
-  log(level, message) {
-    const timestamp = new Date().toISOString();
-    const logEntry = { timestamp, level, message, source: this.name };
-    
-    this.logs.push(logEntry);
-    console.log(`[${timestamp}] ${level.toUpperCase()}: ${message}`);
-  }
-  
-  info(message) {
-    this.log('info', message);
-  }
-  
-  warn(message) {
-    this.log('warn', message);
-  }
-  
-  error(message) {
-    this.log('error', message);
-  }
-  
-  getLogs(level = null) {
-    if (level) {
-      return this.logs.filter(log => log.level === level);
-    }
-    return [...this.logs];
+  clearHistory() {
+    this.history = [];
   }
 }
 
-export default Logger;
+export default Calculator;
 
 // ============= MIXED EXPORTS =============
-// utils.js - Both named and default exports
-export const VERSION = '1.0.0';
-
-export function formatDate(date) {
-  return date.toLocaleDateString();
-}
-
-export function formatCurrency(amount, currency = 'USD') {
+// utils/dataUtils.js
+export const formatCurrency = (amount, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency
+    currency: currency
   }).format(amount);
-}
+};
 
-// Default utility object
-const Utils = {
-  formatDate,
-  formatCurrency,
-  VERSION,
-  
-  // Additional utility methods
-  debounce(func, delay) {
-    let timeoutId;
-    return function (...args) {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func.apply(this, args), delay);
-    };
+export const formatDate = (date, locale = 'en-US') => {
+  return new Intl.DateTimeFormat(locale).format(date);
+};
+
+export const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Default export
+const DataProcessor = {
+  processUsers(users) {
+    return users.map(user => ({
+      ...user,
+      displayName: `${user.firstName} ${user.lastName}`,
+      formattedJoinDate: formatDate(new Date(user.joinDate))
+    }));
   },
   
-  throttle(func, limit) {
-    let inThrottle;
-    return function (...args) {
-      if (!inThrottle) {
-        func.apply(this, args);
-        inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
+  aggregateData(data, groupBy) {
+    return data.reduce((acc, item) => {
+      const key = item[groupBy];
+      if (!acc[key]) {
+        acc[key] = [];
       }
-    };
-  },
-  
-  deepClone(obj) {
-    if (obj === null || typeof obj !== 'object') return obj;
-    if (obj instanceof Date) return new Date(obj.getTime());
-    if (obj instanceof Array) return obj.map(item => this.deepClone(item));
-    
-    const cloned = {};
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        cloned[key] = this.deepClone(obj[key]);
-      }
-    }
-    return cloned;
+      acc[key].push(item);
+      return acc;
+    }, {});
   }
 };
 
-export default Utils;
+export default DataProcessor;
 
 // ============= RE-EXPORTS =============
-// index.js - Barrel exports
-export { default as Logger } from './logger.js';
-export { add, multiply, Calculator } from './math.js';
-export { default as Utils, formatDate, formatCurrency } from './utils.js';
+// utils/index.js - Central export file
+export { default as Calculator } from './Calculator.js';
+export { default as DataProcessor } from './dataUtils.js';
+export * from './mathUtils.js';
+export { formatCurrency, formatDate, validateEmail } from './dataUtils.js';
 
-// Re-export with alias
-export { default as MathUtils } from './math.js';
+// Re-export with renaming
+export { add as addNumbers, multiply as multiplyNumbers } from './mathUtils.js';
 
-// Re-export all named exports
-export * from './constants.js';
+// ============= CONDITIONAL EXPORTS =============
+// utils/environmentUtils.js
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Re-export default as named
-export { default as ApiClient } from './api-client.js';
+// Different exports based on environment
+if (isDevelopment) {
+  export const debugLog = (message, data) => {
+    console.log(`[DEBUG] ${message}`, data);
+  };
+  
+  export const performance = {
+    start: (label) => console.time(label),
+    end: (label) => console.timeEnd(label)
+  };
+} else {
+  export const debugLog = () => {}; // No-op in production
+  export const performance = {
+    start: () => {},
+    end: () => {}
+  };
+}
+
+export const config = {
+  apiUrl: isProduction 
+    ? 'https://api.production.com' 
+    : 'http://localhost:3001',
+  enableLogging: isDevelopment,
+  cacheTimeout: isProduction ? 300000 : 5000
+};
 ```
 
 ### **📥 Import Patterns**
 
 ```javascript
 // ============= NAMED IMPORTS =============
-// Basic named imports
-import { add, multiply, PI } from './math.js';
+// main.js
+import { add, multiply, PI } from './utils/mathUtils.js';
+import { formatCurrency, validateEmail } from './utils/dataUtils.js';
 
 console.log(add(5, 3)); // 8
-console.log(multiply(PI, 2)); // 6.28318
+console.log(multiply(4, 7)); // 28
+console.log(PI); // 3.14159
 
-// Import with alias
-import { pow as power } from './math.js';
-console.log(power(2, 3)); // 8
-
-// Multiple imports
-import { 
-  add, 
-  subtract, 
-  multiply as mult, 
-  divide as div 
-} from './math.js';
-
-// Import all named exports
-import * as MathFunctions from './math.js';
-console.log(MathFunctions.add(1, 2));
-console.log(MathFunctions.PI);
+// Import with renaming
+import { add as addNumbers, multiply as times } from './utils/mathUtils.js';
 
 // ============= DEFAULT IMPORTS =============
-// Import default export
-import Logger from './logger.js';
-const logger = new Logger('AppLogger');
-logger.info('Application started');
+import Calculator from './utils/Calculator.js';
+import DataProcessor from './utils/dataUtils.js';
 
-// Import default with custom name
-import MyLogger from './logger.js';
-import DatabaseLogger from './logger.js';
+const calc = new Calculator();
+console.log(calc.add(10, 5)); // 15
+
+const users = [
+  { firstName: 'John', lastName: 'Doe', joinDate: '2023-01-15' },
+  { firstName: 'Jane', lastName: 'Smith', joinDate: '2023-02-20' }
+];
+const processedUsers = DataProcessor.processUsers(users);
 
 // ============= MIXED IMPORTS =============
-// Import both default and named
-import Utils, { formatDate, VERSION } from './utils.js';
+import Calculator, { formatCurrency, validateEmail } from './utils/mixed.js';
 
-console.log(VERSION); // '1.0.0'
-console.log(formatDate(new Date()));
-console.log(Utils.formatCurrency(1234.56));
+// ============= NAMESPACE IMPORTS =============
+import * as MathUtils from './utils/mathUtils.js';
+import * as DataUtils from './utils/dataUtils.js';
 
-// ============= BARREL IMPORTS =============
-// Import from index.js (barrel)
-import { Logger, Calculator, Utils } from './';
+console.log(MathUtils.add(1, 2));
+console.log(MathUtils.PI);
+console.log(DataUtils.formatCurrency(1000));
 
-// Or with explicit index
-import { Logger, Calculator, Utils } from './index.js';
+// ============= SIDE EFFECT IMPORTS =============
+// polyfills.js
+if (!Array.prototype.includes) {
+  Array.prototype.includes = function(searchElement) {
+    return this.indexOf(searchElement) !== -1;
+  };
+}
 
-// ============= SIDE-EFFECT IMPORTS =============
-// Import for side effects only (no bindings)
+// Import for side effects only
 import './polyfills.js';
-import './global-styles.css';
 
-// ============= CONDITIONAL IMPORTS =============
-// Note: These are not valid ES6 syntax, but show the concept
-// Use dynamic imports instead (covered later)
+// ============= DYNAMIC IMPORTS =============
+// Lazy loading modules
+const loadMathUtils = async () => {
+  const module = await import('./utils/mathUtils.js');
+  return module;
+};
 
-// if (condition) {
-//   import { feature } from './feature.js'; // ❌ Invalid
-// }
-
-// ============= IMPORT ORGANIZATION PATTERNS =============
-// Organize imports by category
-// Built-in modules first (if using Node.js)
-import fs from 'fs';
-import path from 'path';
-
-// Third-party libraries
-import React from 'react';
-import axios from 'axios';
-import lodash from 'lodash';
-
-// Local modules (relative imports)
-import './styles.css';
-import Logger from './logger.js';
-import { Calculator } from './math.js';
-import Utils from '../utils/index.js';
-import config from '../../config.js';
-
-// ============= MODULE SCOPE AND GLOBALS =============
-// Each module has its own scope
-let moduleVariable = 'This is private to the module';
-
-function privateFunction() {
-  return 'Only accessible within this module';
-}
-
-// Only exported items are accessible from outside
-export function publicFunction() {
-  return privateFunction(); // Can access private items within module
-}
-
-// Module runs once when first imported
-console.log('Module loaded!'); // This runs when module is first imported
-
-let initializationCount = 0;
-export function getInitCount() {
-  return ++initializationCount;
-}
-```
-
-## 🏗️ Advanced Module Patterns
-
-### **🔄 Dynamic Imports**
-
-```javascript
-// ============= BASIC DYNAMIC IMPORTS =============
-// Dynamic import returns a Promise
-async function loadMathModule() {
-  try {
-    const mathModule = await import('./math.js');
-    
-    console.log(mathModule.add(5, 3));
-    console.log(mathModule.PI);
-    
-    // Access default export
-    if (mathModule.default) {
-      const MathUtils = mathModule.default;
-      // Use MathUtils...
-    }
-    
-  } catch (error) {
-    console.error('Failed to load math module:', error);
-  }
-}
-
-// Using .then() syntax
-function loadUtilsModule() {
-  import('./utils.js')
-    .then(utilsModule => {
-      const { formatDate, formatCurrency } = utilsModule;
-      console.log(formatDate(new Date()));
-      console.log(formatCurrency(1234.56));
-    })
-    .catch(error => {
-      console.error('Failed to load utils module:', error);
-    });
-}
-
-// ============= CONDITIONAL LOADING =============
-async function loadFeatureBasedOnCondition(userRole) {
-  if (userRole === 'admin') {
-    const { AdminPanel } = await import('./admin-panel.js');
-    return AdminPanel;
-  } else if (userRole === 'moderator') {
-    const { ModeratorTools } = await import('./moderator-tools.js');
-    return ModeratorTools;
+// Conditional loading
+const loadCalculator = async (advanced = false) => {
+  if (advanced) {
+    const { default: AdvancedCalculator } = await import('./utils/AdvancedCalculator.js');
+    return AdvancedCalculator;
   } else {
-    const { UserDashboard } = await import('./user-dashboard.js');
-    return UserDashboard;
+    const { default: Calculator } = await import('./utils/Calculator.js');
+    return Calculator;
   }
-}
+};
 
-// ============= LAZY LOADING WITH ERROR HANDLING =============
-class FeatureLoader {
-  constructor() {
-    this.loadedModules = new Map();
-    this.loadingPromises = new Map();
+// Dynamic import with error handling
+const loadModule = async (moduleName) => {
+  try {
+    const module = await import(`./modules/${moduleName}.js`);
+    return module;
+  } catch (error) {
+    console.error(`Failed to load module ${moduleName}:`, error);
+    // Return fallback or default implementation
+    return { default: () => console.log('Module not available') };
   }
-  
-  async loadFeature(featureName) {
-    // Return cached module if already loaded
-    if (this.loadedModules.has(featureName)) {
-      return this.loadedModules.get(featureName);
-    }
-    
-    // Return existing promise if already loading
-    if (this.loadingPromises.has(featureName)) {
-      return this.loadingPromises.get(featureName);
-    }
-    
-    // Start loading
-    const loadingPromise = this.loadFeatureModule(featureName);
-    this.loadingPromises.set(featureName, loadingPromise);
-    
-    try {
-      const module = await loadingPromise;
-      this.loadedModules.set(featureName, module);
-      this.loadingPromises.delete(featureName);
-      return module;
-    } catch (error) {
-      this.loadingPromises.delete(featureName);
-      throw error;
-    }
-  }
-  
-  async loadFeatureModule(featureName) {
-    const moduleMap = {
-      'charts': () => import('./features/charts.js'),
-      'analytics': () => import('./features/analytics.js'),
-      'reporting': () => import('./features/reporting.js'),
-      'export': () => import('./features/export.js')
-    };
-    
-    const loader = moduleMap[featureName];
-    if (!loader) {
-      throw new Error(`Unknown feature: ${featureName}`);
-    }
-    
-    return loader();
-  }
-  
-  async loadMultipleFeatures(featureNames) {
-    const loadPromises = featureNames.map(name => this.loadFeature(name));
-    return Promise.allSettled(loadPromises);
-  }
-  
-  preloadFeature(featureName) {
-    // Start loading but don't wait for completion
-    this.loadFeature(featureName).catch(error => {
-      console.warn(`Preload failed for ${featureName}:`, error);
-    });
-  }
-  
-  isLoaded(featureName) {
-    return this.loadedModules.has(featureName);
-  }
-  
-  isLoading(featureName) {
-    return this.loadingPromises.has(featureName);
-  }
-}
+};
 
 // Usage
-const featureLoader = new FeatureLoader();
-
-async function showCharts() {
-  try {
-    const chartsModule = await featureLoader.loadFeature('charts');
-    const { ChartRenderer } = chartsModule;
-    
-    const chart = new ChartRenderer();
-    chart.render(data);
-  } catch (error) {
-    console.error('Failed to load charts:', error);
-    // Show fallback UI
-  }
-}
-
-// ============= MODULE FEDERATION PATTERN =============
-class ModuleRegistry {
-  constructor() {
-    this.modules = new Map();
-    this.aliases = new Map();
-  }
+(async () => {
+  const mathUtils = await loadMathUtils();
+  console.log(mathUtils.add(5, 3));
   
-  register(name, moduleLoader, options = {}) {
-    this.modules.set(name, {
-      loader: moduleLoader,
-      version: options.version || '1.0.0',
-      dependencies: options.dependencies || [],
-      loaded: null,
-      loading: null
-    });
+  const CalculatorClass = await loadCalculator(true);
+  const calc = new CalculatorClass();
+})();
+```
+
+### **🏗️ Advanced Module Patterns**
+
+```javascript
+// ============= MODULE FACTORY PATTERN =============
+// factories/createApiClient.js
+export const createApiClient = (config = {}) => {
+  const {
+    baseURL = '/api',
+    timeout = 5000,
+    headers = {},
+    retries = 3
+  } = config;
+  
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    ...headers
+  };
+  
+  return {
+    async request(endpoint, options = {}) {
+      const url = `${baseURL}${endpoint}`;
+      const requestConfig = {
+        timeout,
+        headers: { ...defaultHeaders, ...options.headers },
+        ...options
+      };
+      
+      let lastError;
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const response = await fetch(url, requestConfig);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return await response.json();
+        } catch (error) {
+          lastError = error;
+          if (attempt === retries) break;
+          
+          // Wait before retry with exponential backoff
+          await new Promise(resolve => 
+            setTimeout(resolve, Math.pow(2, attempt) * 100)
+          );
+        }
+      }
+      throw lastError;
+    },
     
-    // Register aliases
-    if (options.aliases) {
-      options.aliases.forEach(alias => {
-        this.aliases.set(alias, name);
+    get(endpoint, params = {}) {
+      const queryString = new URLSearchParams(params).toString();
+      const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+      return this.request(url);
+    },
+    
+    post(endpoint, data) {
+      return this.request(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    },
+    
+    put(endpoint, data) {
+      return this.request(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+    },
+    
+    delete(endpoint) {
+      return this.request(endpoint, {
+        method: 'DELETE'
       });
     }
-  }
-  
-  async load(name, version = null) {
-    const actualName = this.aliases.get(name) || name;
-    const moduleInfo = this.modules.get(actualName);
-    
-    if (!moduleInfo) {
-      throw new Error(`Module not found: ${name}`);
-    }
-    
-    if (version && moduleInfo.version !== version) {
-      throw new Error(`Version mismatch for ${name}: expected ${version}, got ${moduleInfo.version}`);
-    }
-    
-    // Return cached module
-    if (moduleInfo.loaded) {
-      return moduleInfo.loaded;
-    }
-    
-    // Return existing loading promise
-    if (moduleInfo.loading) {
-      return moduleInfo.loading;
-    }
-    
-    // Load dependencies first
-    if (moduleInfo.dependencies.length > 0) {
-      await Promise.all(
-        moduleInfo.dependencies.map(dep => this.load(dep))
-      );
-    }
-    
-    // Load the module
-    moduleInfo.loading = moduleInfo.loader();
-    
-    try {
-      moduleInfo.loaded = await moduleInfo.loading;
-      moduleInfo.loading = null;
-      return moduleInfo.loaded;
-    } catch (error) {
-      moduleInfo.loading = null;
-      throw error;
-    }
-  }
-  
-  unload(name) {
-    const actualName = this.aliases.get(name) || name;
-    const moduleInfo = this.modules.get(actualName);
-    
-    if (moduleInfo) {
-      moduleInfo.loaded = null;
-      moduleInfo.loading = null;
-    }
-  }
-  
-  getLoadedModules() {
-    return Array.from(this.modules.entries())
-      .filter(([, info]) => info.loaded)
-      .map(([name, info]) => ({ name, version: info.version }));
-  }
-}
-
-// Usage
-const registry = new ModuleRegistry();
-
-registry.register('ui-components', () => import('./ui-components.js'), {
-  version: '2.1.0',
-  aliases: ['ui', 'components']
-});
-
-registry.register('data-processing', () => import('./data-processing.js'), {
-  version: '1.5.0',
-  dependencies: ['ui-components']
-});
-
-// Load modules
-async function initializeApp() {
-  try {
-    const [uiModule, dataModule] = await Promise.all([
-      registry.load('ui-components'),
-      registry.load('data-processing')
-    ]);
-    
-    console.log('All modules loaded:', registry.getLoadedModules());
-  } catch (error) {
-    console.error('Module loading failed:', error);
-  }
-}
-```
-
-### **🔧 Module Configuration Patterns**
-
-```javascript
-// ============= CONFIGURATION MODULE =============
-// config/index.js
-const environment = process.env.NODE_ENV || 'development';
-
-const baseConfig = {
-  app: {
-    name: 'My Application',
-    version: '1.0.0'
-  },
-  api: {
-    timeout: 30000,
-    retries: 3
-  },
-  features: {
-    analytics: true,
-    debugMode: false
-  }
+  };
 };
 
-const environmentConfigs = {
-  development: {
-    api: {
-      baseUrl: 'http://localhost:3000/api',
-      timeout: 10000
-    },
-    features: {
-      debugMode: true
+// ============= SINGLETON MODULE PATTERN =============
+// services/ConfigService.js
+class ConfigService {
+  constructor() {
+    if (ConfigService.instance) {
+      return ConfigService.instance;
     }
-  },
-  
-  production: {
-    api: {
-      baseUrl: 'https://api.example.com',
-      timeout: 30000
-    },
-    features: {
-      analytics: true,
-      debugMode: false
-    }
-  },
-  
-  test: {
-    api: {
-      baseUrl: 'http://localhost:3001/api',
-      timeout: 5000
-    },
-    features: {
-      analytics: false,
-      debugMode: true
-    }
-  }
-};
-
-function deepMerge(target, source) {
-  const result = { ...target };
-  
-  for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(target[key] || {}, source[key]);
-    } else {
-      result[key] = source[key];
-    }
+    
+    this.config = new Map();
+    this.listeners = new Set();
+    ConfigService.instance = this;
   }
   
-  return result;
+  set(key, value) {
+    const oldValue = this.config.get(key);
+    this.config.set(key, value);
+    
+    // Notify listeners
+    this.listeners.forEach(listener => {
+      listener(key, value, oldValue);
+    });
+  }
+  
+  get(key, defaultValue = undefined) {
+    return this.config.get(key) ?? defaultValue;
+  }
+  
+  has(key) {
+    return this.config.has(key);
+  }
+  
+  delete(key) {
+    return this.config.delete(key);
+  }
+  
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+  
+  getAll() {
+    return Object.fromEntries(this.config);
+  }
+  
+  load(configObject) {
+    Object.entries(configObject).forEach(([key, value]) => {
+      this.set(key, value);
+    });
+  }
 }
 
-const config = deepMerge(baseConfig, environmentConfigs[environment] || {});
+// Export singleton instance
+export const configService = new ConfigService();
 
-export default config;
-
-// Named exports for specific config sections
-export const { api: apiConfig } = config;
-export const { features: featureConfig } = config;
-export const { app: appConfig } = config;
-
-// ============= PLUGIN SYSTEM =============
-// plugin-manager.js
-class PluginManager {
+// ============= PLUGIN SYSTEM MODULE =============
+// core/PluginManager.js
+export class PluginManager {
   constructor() {
     this.plugins = new Map();
     this.hooks = new Map();
-    this.middleware = [];
   }
   
-  async registerPlugin(name, pluginLoader, options = {}) {
-    try {
-      const pluginModule = await pluginLoader();
-      const plugin = pluginModule.default || pluginModule;
-      
-      if (typeof plugin.install === 'function') {
-        await plugin.install(this, options);
-      }
-      
-      this.plugins.set(name, {
-        plugin,
-        options,
-        active: true
-      });
-      
-      console.log(`Plugin "${name}" registered successfully`);
-    } catch (error) {
-      console.error(`Failed to register plugin "${name}":`, error);
-      throw error;
-    }
-  }
-  
-  async unregisterPlugin(name) {
-    const pluginInfo = this.plugins.get(name);
-    
-    if (pluginInfo && typeof pluginInfo.plugin.uninstall === 'function') {
-      await pluginInfo.plugin.uninstall(this);
+  register(name, plugin) {
+    if (this.plugins.has(name)) {
+      throw new Error(`Plugin ${name} already registered`);
     }
     
-    this.plugins.delete(name);
+    // Validate plugin interface
+    if (typeof plugin.init !== 'function') {
+      throw new Error(`Plugin ${name} must have an init method`);
+    }
+    
+    this.plugins.set(name, plugin);
+    
+    // Initialize plugin
+    plugin.init(this);
+    
+    return this;
   }
   
-  addHook(hookName, callback, priority = 10) {
+  unregister(name) {
+    const plugin = this.plugins.get(name);
+    if (plugin && typeof plugin.destroy === 'function') {
+      plugin.destroy();
+    }
+    
+    return this.plugins.delete(name);
+  }
+  
+  addHook(hookName, callback, priority = 0) {
     if (!this.hooks.has(hookName)) {
       this.hooks.set(hookName, []);
     }
     
     this.hooks.get(hookName).push({ callback, priority });
     
-    // Sort by priority
-    this.hooks.get(hookName).sort((a, b) => a.priority - b.priority);
+    // Sort by priority (higher priority first)
+    this.hooks.get(hookName).sort((a, b) => b.priority - a.priority);
   }
   
-  async executeHook(hookName, ...args) {
+  async executeHook(hookName, data = {}) {
     const hooks = this.hooks.get(hookName) || [];
-    const results = [];
+    let result = data;
     
     for (const { callback } of hooks) {
       try {
-        const result = await callback(...args);
-        results.push(result);
+        result = await callback(result) || result;
       } catch (error) {
-        console.error(`Hook "${hookName}" failed:`, error);
-      }
-    }
-    
-    return results;
-  }
-  
-  addMiddleware(middleware) {
-    this.middleware.push(middleware);
-  }
-  
-  async applyMiddleware(context) {
-    let result = context;
-    
-    for (const middleware of this.middleware) {
-      try {
-        result = await middleware(result);
-      } catch (error) {
-        console.error('Middleware failed:', error);
-        throw error;
+        console.error(`Hook ${hookName} error:`, error);
       }
     }
     
     return result;
   }
   
-  getPluginInfo(name) {
+  getPlugin(name) {
     return this.plugins.get(name);
   }
   
-  listPlugins() {
-    return Array.from(this.plugins.entries()).map(([name, info]) => ({
-      name,
-      active: info.active,
-      options: info.options
-    }));
+  getPlugins() {
+    return Array.from(this.plugins.keys());
   }
 }
 
-// Example plugin
-// plugins/logger-plugin.js
-export default {
-  async install(pluginManager, options = {}) {
-    const { level = 'info', prefix = '[LOG]' } = options;
-    
-    pluginManager.addHook('beforeRequest', (request) => {
-      console.log(`${prefix} Request:`, request.url);
-    });
-    
-    pluginManager.addHook('afterResponse', (response) => {
-      console.log(`${prefix} Response:`, response.status);
-    });
-    
-    pluginManager.addMiddleware(async (context) => {
-      context.timestamp = new Date().toISOString();
-      return context;
-    });
-  },
-  
-  async uninstall(pluginManager) {
-    console.log('Logger plugin uninstalled');
+// Create global plugin manager
+export const pluginManager = new PluginManager();
+
+// ============= LAZY LOADING MODULE =============
+// utils/lazyLoader.js
+export class LazyLoader {
+  constructor() {
+    this.cache = new Map();
+    this.loading = new Map();
   }
-};
-
-// Usage
-const pluginManager = new PluginManager();
-
-await pluginManager.registerPlugin('logger', () => import('./plugins/logger-plugin.js'), {
-  level: 'debug',
-  prefix: '[DEBUG]'
-});
-
-// ============= MODULE FACTORY PATTERN =============
-// factory/api-client-factory.js
-export function createApiClient(config) {
-  const { baseUrl, timeout, retries, interceptors = {} } = config;
   
-  class ApiClient {
-    constructor() {
-      this.baseUrl = baseUrl;
-      this.timeout = timeout;
-      this.retries = retries;
-      this.interceptors = interceptors;
+  async load(modulePath, exportName = 'default') {
+    const cacheKey = `${modulePath}#${exportName}`;
+    
+    // Return cached module
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
     }
     
-    async request(endpoint, options = {}) {
-      let url = `${this.baseUrl}${endpoint}`;
-      let config = {
-        timeout: this.timeout,
-        ...options
-      };
-      
-      // Apply request interceptors
-      if (this.interceptors.request) {
-        config = await this.interceptors.request(config);
-      }
-      
-      let attempt = 0;
-      while (attempt <= this.retries) {
-        try {
-          const response = await fetch(url, config);
-          
-          // Apply response interceptors
-          if (this.interceptors.response) {
-            return await this.interceptors.response(response);
-          }
-          
-          return response;
-        } catch (error) {
-          attempt++;
-          if (attempt > this.retries) {
-            throw error;
-          }
-          
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-      }
+    // Wait if already loading
+    if (this.loading.has(cacheKey)) {
+      return this.loading.get(cacheKey);
+    }
+    
+    // Start loading
+    const loadPromise = this.loadModule(modulePath, exportName);
+    this.loading.set(cacheKey, loadPromise);
+    
+    try {
+      const module = await loadPromise;
+      this.cache.set(cacheKey, module);
+      return module;
+    } catch (error) {
+      // Remove from loading cache on error
+      this.loading.delete(cacheKey);
+      throw error;
+    } finally {
+      this.loading.delete(cacheKey);
     }
   }
   
-  return new ApiClient();
+  async loadModule(modulePath, exportName) {
+    try {
+      const module = await import(modulePath);
+      
+      if (exportName === '*') {
+        return module;
+      }
+      
+      if (!(exportName in module)) {
+        throw new Error(`Export '${exportName}' not found in module '${modulePath}'`);
+      }
+      
+      return module[exportName];
+    } catch (error) {
+      throw new Error(`Failed to load module '${modulePath}': ${error.message}`);
+    }
+  }
+  
+  preload(modulePaths) {
+    return Promise.all(
+      modulePaths.map(path => 
+        this.load(path).catch(error => 
+          console.warn(`Failed to preload ${path}:`, error)
+        )
+      )
+    );
+  }
+  
+  clear() {
+    this.cache.clear();
+    this.loading.clear();
+  }
+  
+  remove(modulePath, exportName = 'default') {
+    const cacheKey = `${modulePath}#${exportName}`;
+    this.cache.delete(cacheKey);
+  }
 }
 
-// Usage
-const apiClient = createApiClient({
-  baseUrl: 'https://api.example.com',
-  timeout: 10000,
-  retries: 3,
-  interceptors: {
-    request: async (config) => {
-      config.headers = {
-        ...config.headers,
-        'Authorization': `Bearer ${getAuthToken()}`
-      };
-      return config;
-    },
-    response: async (response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    }
+export const lazyLoader = new LazyLoader();
+
+// ============= MODULE REGISTRY PATTERN =============
+// core/ModuleRegistry.js
+export class ModuleRegistry {
+  constructor() {
+    this.modules = new Map();
+    this.dependencies = new Map();
+    this.initialized = new Set();
   }
-});
+  
+  register(name, moduleFactory, dependencies = []) {
+    if (this.modules.has(name)) {
+      throw new Error(`Module ${name} already registered`);
+    }
+    
+    this.modules.set(name, moduleFactory);
+    this.dependencies.set(name, dependencies);
+    
+    return this;
+  }
+  
+  async get(name) {
+    if (this.initialized.has(name)) {
+      return this.modules.get(name);
+    }
+    
+    if (!this.modules.has(name)) {
+      throw new Error(`Module ${name} not found`);
+    }
+    
+    // Initialize dependencies first
+    const deps = this.dependencies.get(name) || [];
+    const resolvedDeps = await Promise.all(
+      deps.map(dep => this.get(dep))
+    );
+    
+    // Initialize module
+    const moduleFactory = this.modules.get(name);
+    const module = await moduleFactory(...resolvedDeps);
+    
+    // Cache initialized module
+    this.modules.set(name, module);
+    this.initialized.add(name);
+    
+    return module;
+  }
+  
+  async initialize(moduleNames = []) {
+    if (moduleNames.length === 0) {
+      moduleNames = Array.from(this.modules.keys());
+    }
+    
+    return Promise.all(moduleNames.map(name => this.get(name)));
+  }
+  
+  topologicalSort() {
+    const visited = new Set();
+    const temp = new Set();
+    const result = [];
+    
+    const visit = (name) => {
+      if (temp.has(name)) {
+        throw new Error(`Circular dependency detected: ${name}`);
+      }
+      
+      if (!visited.has(name)) {
+        temp.add(name);
+        
+        const deps = this.dependencies.get(name) || [];
+        deps.forEach(visit);
+        
+        temp.delete(name);
+        visited.add(name);
+        result.push(name);
+      }
+    };
+    
+    Array.from(this.modules.keys()).forEach(visit);
+    return result;
+  }
+}
+
+export const moduleRegistry = new ModuleRegistry();
 ```
 
-## 🚀 Next.js Module Patterns
+## 🚀 Next.js Module Applications
 
-### **📁 File Structure Organization**
+### **📁 Project Structure with Modules**
 
-```typescript
-// ============= NEXT.JS MODULE STRUCTURE =============
+```javascript
+// ============= NEXT.JS PROJECT STRUCTURE =============
 /*
-src/
+project/
 ├── components/
 │   ├── ui/
-│   │   ├── Button/
-│   │   │   ├── Button.tsx
-│   │   │   ├── Button.module.css
-│   │   │   ├── Button.test.tsx
-│   │   │   └── index.ts
-│   │   ├── Modal/
-│   │   └── index.ts (barrel export)
-│   ├── features/
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   └── profile/
-│   └── layout/
-├── hooks/
-│   ├── useAuth.ts
-│   ├── useApi.ts
-│   └── index.ts
-├── utils/
-│   ├── api.ts
-│   ├── formatting.ts
-│   └── index.ts
-├── types/
-│   ├── api.ts
-│   ├── user.ts
-│   └── index.ts
-└── lib/
-    ├── auth.ts
-    ├── database.ts
-    └── index.ts
+│   │   ├── index.js          // Re-export all UI components
+│   │   ├── Button.jsx
+│   │   ├── Input.jsx
+│   │   └── Modal.jsx
+│   ├── layout/
+│   │   ├── index.js
+│   │   ├── Header.jsx
+│   │   ├── Footer.jsx
+│   │   └── Sidebar.jsx
+│   └── features/
+│       ├── auth/
+│       │   ├── index.js
+│       │   ├── LoginForm.jsx
+│       │   └── SignupForm.jsx
+│       └── dashboard/
+│           ├── index.js
+│           ├── DashboardLayout.jsx
+│           └── widgets/
+├── lib/
+│   ├── api/
+│   │   ├── index.js
+│   │   ├── client.js
+│   │   └── endpoints.js
+│   ├── utils/
+│   │   ├── index.js
+│   │   ├── formatters.js
+│   │   └── validators.js
+│   └── hooks/
+│       ├── index.js
+│       ├── useApi.js
+│       └── useLocalStorage.js
+├── services/
+│   ├── index.js
+│   ├── AuthService.js
+│   ├── DataService.js
+│   └── CacheService.js
+└── config/
+    ├── index.js
+    ├── database.js
+    └── api.js
 */
 
-// components/ui/index.ts - Barrel exports
-export { default as Button } from './Button';
-export { default as Modal } from './Modal';
-export { default as Input } from './Input';
-export { default as Card } from './Card';
+// ============= COMPONENT MODULE ORGANIZATION =============
+// components/ui/index.js
+export { default as Button } from './Button.jsx';
+export { default as Input } from './Input.jsx';
+export { default as Modal } from './Modal.jsx';
+export { default as Loading } from './Loading.jsx';
 
-// Export types
-export type { ButtonProps } from './Button';
-export type { ModalProps } from './Modal';
-
-// components/ui/Button/index.ts
-export { default } from './Button';
-export type { ButtonProps } from './Button';
-
-// components/ui/Button/Button.tsx
-import React from 'react';
+// components/ui/Button.jsx
+import { forwardRef } from 'react';
 import styles from './Button.module.css';
 
-export interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  disabled?: boolean;
-  loading?: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
-}
-
-const Button: React.FC<ButtonProps> = ({
-  variant = 'primary',
-  size = 'md',
-  disabled = false,
+const Button = forwardRef(({ 
+  variant = 'primary', 
+  size = 'medium', 
   loading = false,
+  disabled = false,
   children,
-  onClick
-}) => {
-  const className = [
-    styles.button,
-    styles[variant],
-    styles[size],
-    disabled && styles.disabled,
-    loading && styles.loading
-  ].filter(Boolean).join(' ');
+  onClick,
+  ...props 
+}, ref) => {
+  const handleClick = (e) => {
+    if (loading || disabled) return;
+    onClick?.(e);
+  };
 
   return (
     <button
-      className={className}
+      ref={ref}
+      className={`
+        ${styles.button}
+        ${styles[variant]}
+        ${styles[size]}
+        ${loading ? styles.loading : ''}
+        ${disabled ? styles.disabled : ''}
+      `}
       disabled={disabled || loading}
-      onClick={onClick}
+      onClick={handleClick}
+      {...props}
     >
-      {loading ? 'Loading...' : children}
+      {loading ? <span className={styles.spinner} /> : children}
     </button>
   );
-};
+});
+
+Button.displayName = 'Button';
 
 export default Button;
 
-// ============= DYNAMIC IMPORTS IN NEXT.JS =============
-// components/DynamicFeatureLoader.tsx
-import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+// components/features/auth/index.js
+export { default as LoginForm } from './LoginForm.jsx';
+export { default as SignupForm } from './SignupForm.jsx';
+export { default as AuthProvider } from './AuthProvider.jsx';
+export { default as ProtectedRoute } from './ProtectedRoute.jsx';
 
-// Dynamic import with loading component
-const DynamicChart = dynamic(() => import('./Chart'), {
-  loading: () => <div>Loading chart...</div>,
-  ssr: false // Disable server-side rendering for this component
-});
+// ============= SERVICE LAYER MODULES =============
+// services/AuthService.js
+import { createApiClient } from '../lib/api';
 
-// Dynamic import with named export
-const DynamicAnalytics = dynamic(
-  () => import('./features/Analytics').then(mod => mod.AnalyticsComponent),
-  {
-    loading: () => <div>Loading analytics...</div>
+class AuthService {
+  constructor() {
+    this.apiClient = createApiClient({
+      baseURL: '/api/auth'
+    });
+    this.currentUser = null;
+    this.listeners = new Set();
   }
-);
-
-// Conditional dynamic loading
-const ConditionalLoader: React.FC<{ userRole: string }> = ({ userRole }) => {
-  const [Component, setComponent] = useState<React.ComponentType | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const loadComponent = async () => {
-      setLoading(true);
+  
+  async login(credentials) {
+    try {
+      const response = await this.apiClient.post('/login', credentials);
+      this.currentUser = response.user;
+      this.notifyListeners('login', response.user);
       
+      // Store token
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('authToken', response.token);
+      }
+      
+      return response;
+    } catch (error) {
+      this.notifyListeners('loginError', error);
+      throw error;
+    }
+  }
+  
+  async logout() {
+    try {
+      await this.apiClient.post('/logout');
+    } catch (error) {
+      console.warn('Logout request failed:', error);
+    } finally {
+      this.currentUser = null;
+      this.notifyListeners('logout');
+      
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('authToken');
+      }
+    }
+  }
+  
+  async getCurrentUser() {
+    if (this.currentUser) {
+      return this.currentUser;
+    }
+    
+    try {
+      const response = await this.apiClient.get('/me');
+      this.currentUser = response.user;
+      return response.user;
+    } catch (error) {
+      return null;
+    }
+  }
+  
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+  
+  notifyListeners(event, data) {
+    this.listeners.forEach(listener => {
       try {
-        let componentModule;
-        
-        switch (userRole) {
-          case 'admin':
-            componentModule = await import('./AdminDashboard');
-            break;
-          case 'manager':
-            componentModule = await import('./ManagerDashboard');
-            break;
-          default:
-            componentModule = await import('./UserDashboard');
-        }
-        
-        setComponent(() => componentModule.default);
+        listener(event, data);
       } catch (error) {
-        console.error('Failed to load component:', error);
+        console.error('Auth listener error:', error);
+      }
+    });
+  }
+}
+
+// Export singleton instance
+export const authService = new AuthService();
+export default AuthService;
+
+// services/index.js - Central service exports
+export { authService } from './AuthService.js';
+export { dataService } from './DataService.js';
+export { cacheService } from './CacheService.js';
+export { notificationService } from './NotificationService.js';
+
+// ============= CUSTOM HOOKS MODULE =============
+// lib/hooks/useAuth.js
+import { useState, useEffect, useContext, createContext } from 'react';
+import { authService } from '../../services';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        setError(error);
       } finally {
         setLoading(false);
       }
     };
-
-    loadComponent();
-  }, [userRole]);
-
-  if (loading) {
-    return <div>Loading dashboard...</div>;
-  }
-
-  if (!Component) {
-    return <div>Failed to load dashboard</div>;
-  }
-
-  return <Component />;
+    
+    initAuth();
+    
+    // Subscribe to auth changes
+    const unsubscribe = authService.subscribe((event, data) => {
+      switch (event) {
+        case 'login':
+          setUser(data);
+          setError(null);
+          break;
+        case 'logout':
+          setUser(null);
+          setError(null);
+          break;
+        case 'loginError':
+          setError(data);
+          break;
+      }
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  const login = async (credentials) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      await authService.login(credentials);
+    } catch (error) {
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const logout = async () => {
+    setLoading(true);
+    
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const value = {
+    user,
+    loading,
+    error,
+    login,
+    logout,
+    isAuthenticated: !!user
+  };
+  
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
-
-// ============= FEATURE-BASED MODULE ORGANIZATION =============
-// features/auth/index.ts
-export { default as LoginForm } from './components/LoginForm';
-export { default as SignupForm } from './components/SignupForm';
-export { default as PasswordReset } from './components/PasswordReset';
-
-export { useAuth } from './hooks/useAuth';
-export { useAuthGuard } from './hooks/useAuthGuard';
-
-export { authApi } from './api';
-export { authUtils } from './utils';
-
-export type { User, AuthState, LoginCredentials } from './types';
-
-// features/auth/hooks/useAuth.ts
-import { useState, useEffect, createContext, useContext } from 'react';
-import { authApi } from '../api';
-import type { User, AuthState } from '../types';
-
-const AuthContext = createContext<AuthState | null>(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -995,481 +890,466 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+// lib/hooks/index.js
+export { useAuth, AuthProvider } from './useAuth.js';
+export { useApi } from './useApi.js';
+export { useLocalStorage } from './useLocalStorage.js';
+export { useDebounce } from './useDebounce.js';
 
+// ============= API CLIENT MODULE =============
+// lib/api/client.js
+import { createApiClient } from './factory.js';
+
+// Create different API clients for different services
+export const mainApiClient = createApiClient({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
+  timeout: 10000,
+  headers: {
+    'X-Client-Version': process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'
+  }
+});
+
+export const authApiClient = createApiClient({
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL || '/api'}/auth`,
+  timeout: 5000
+});
+
+export const uploadsApiClient = createApiClient({
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL || '/api'}/uploads`,
+  timeout: 30000, // Longer timeout for uploads
+  headers: {} // No Content-Type header for file uploads
+});
+
+// Add request interceptor for authentication
+if (typeof window !== 'undefined') {
+  mainApiClient.addRequestInterceptor(async (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  });
+}
+
+// lib/api/endpoints.js
+import { mainApiClient, authApiClient } from './client.js';
+
+export const userApi = {
+  getAll: (params) => mainApiClient.get('/users', params),
+  getById: (id) => mainApiClient.get(`/users/${id}`),
+  create: (data) => mainApiClient.post('/users', data),
+  update: (id, data) => mainApiClient.put(`/users/${id}`, data),
+  delete: (id) => mainApiClient.delete(`/users/${id}`),
+  search: (query) => mainApiClient.get('/users/search', { q: query })
+};
+
+export const authApi = {
+  login: (credentials) => authApiClient.post('/login', credentials),
+  logout: () => authApiClient.post('/logout'),
+  register: (userData) => authApiClient.post('/register', userData),
+  refreshToken: () => authApiClient.post('/refresh'),
+  resetPassword: (email) => authApiClient.post('/reset-password', { email }),
+  verifyEmail: (token) => authApiClient.post('/verify-email', { token })
+};
+
+export const postApi = {
+  getAll: (params) => mainApiClient.get('/posts', params),
+  getById: (id) => mainApiClient.get(`/posts/${id}`),
+  create: (data) => mainApiClient.post('/posts', data),
+  update: (id, data) => mainApiClient.put(`/posts/${id}`, data),
+  delete: (id) => mainApiClient.delete(`/posts/${id}`),
+  publish: (id) => mainApiClient.post(`/posts/${id}/publish`),
+  unpublish: (id) => mainApiClient.post(`/posts/${id}/unpublish`)
+};
+
+// lib/api/index.js
+export { mainApiClient, authApiClient, uploadsApiClient } from './client.js';
+export { userApi, authApi, postApi } from './endpoints.js';
+export { createApiClient } from './factory.js';
+```
+
+### **🔄 Dynamic Module Loading in Next.js**
+
+```jsx
+// ============= DYNAMIC COMPONENT LOADING =============
+// components/DynamicLoader.jsx
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+
+// Higher-order component for dynamic loading
+export const withDynamicLoading = (importFunction, options = {}) => {
+  const {
+    loading: LoadingComponent = () => <div>Loading...</div>,
+    error: ErrorComponent = ({ error }) => <div>Error: {error.message}</div>,
+    retry = true
+  } = options;
+  
+  return dynamic(importFunction, {
+    loading: LoadingComponent,
+    ssr: false,
+    ...options
+  });
+};
+
+// Dynamic module loader with error handling
+export const DynamicModuleLoader = ({ 
+  modulePath, 
+  children, 
+  fallback = null,
+  onError = console.error 
+}) => {
+  const [module, setModule] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   useEffect(() => {
-    const initAuth = async () => {
+    let cancelled = false;
+    
+    const loadModule = async () => {
       try {
-        const userData = await authApi.getCurrentUser();
-        setUser(userData);
-      } catch (error) {
-        console.error('Auth initialization failed:', error);
+        setLoading(true);
+        setError(null);
+        
+        const loadedModule = await import(modulePath);
+        
+        if (!cancelled) {
+          setModule(loadedModule);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err);
+          onError(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadModule();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [modulePath, onError]);
+  
+  if (loading) {
+    return fallback || <div>Loading module...</div>;
+  }
+  
+  if (error) {
+    return <div>Failed to load module: {error.message}</div>;
+  }
+  
+  return children(module);
+};
+
+// Usage example
+const DynamicChartComponent = () => {
+  return (
+    <DynamicModuleLoader
+      modulePath="./charts/AdvancedChart"
+      fallback={<div>Loading chart...</div>}
+    >
+      {(chartModule) => {
+        const Chart = chartModule.default;
+        return <Chart data={chartData} />;
+      }}
+    </DynamicModuleLoader>
+  );
+};
+
+// ============= FEATURE-BASED DYNAMIC LOADING =============
+// components/FeatureLoader.jsx
+import { useState, useEffect } from 'react';
+import { lazyLoader } from '../lib/utils/lazyLoader.js';
+
+const featureModules = {
+  dashboard: () => import('../features/dashboard'),
+  analytics: () => import('../features/analytics'),
+  userManagement: () => import('../features/userManagement'),
+  settings: () => import('../features/settings')
+};
+
+export const FeatureLoader = ({ feature, ...props }) => {
+  const [FeatureComponent, setFeatureComponent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const loadFeature = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        if (!featureModules[feature]) {
+          throw new Error(`Unknown feature: ${feature}`);
+        }
+        
+        const module = await featureModules[feature]();
+        setFeatureComponent(() => module.default);
+      } catch (err) {
+        setError(err);
       } finally {
         setLoading(false);
       }
     };
-
-    initAuth();
-  }, []);
-
-  const login = async (credentials: LoginCredentials) => {
-    const userData = await authApi.login(credentials);
-    setUser(userData);
-    return userData;
-  };
-
-  const logout = async () => {
-    await authApi.logout();
-    setUser(null);
-  };
-
-  const value: AuthState = {
-    user,
-    loading,
-    login,
-    logout,
-    isAuthenticated: !!user
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+    
+    loadFeature();
+  }, [feature]);
+  
+  if (loading) {
+    return (
+      <div className="feature-loading">
+        <div className="spinner" />
+        <p>Loading {feature}...</p>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="feature-error">
+        <h3>Failed to load {feature}</h3>
+        <p>{error.message}</p>
+        <button onClick={() => window.location.reload()}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+  
+  if (!FeatureComponent) {
+    return <div>Feature not available</div>;
+  }
+  
+  return <FeatureComponent {...props} />;
 };
 
-// ============= API MODULE ORGANIZATION =============
-// lib/api/base.ts
-class ApiClient {
-  private baseUrl: string;
-  private headers: Record<string, string>;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    this.headers = {
-      'Content-Type': 'application/json'
-    };
-  }
-
-  setAuthToken(token: string) {
-    this.headers.Authorization = `Bearer ${token}`;
-  }
-
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.headers,
-        ...options.headers
-      }
-    };
-
-    const response = await fetch(url, config);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
-  get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint);
-  }
-
-  post<T>(endpoint: string, data: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  put<T>(endpoint: string, data: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'DELETE'
-    });
-  }
-}
-
-export const apiClient = new ApiClient(process.env.NEXT_PUBLIC_API_URL || '/api');
-
-// lib/api/users.ts
-import { apiClient } from './base';
-import type { User, CreateUserData, UpdateUserData } from '../../types';
-
-export const usersApi = {
-  getAll: (): Promise<User[]> => 
-    apiClient.get('/users'),
-
-  getById: (id: string): Promise<User> => 
-    apiClient.get(`/users/${id}`),
-
-  create: (data: CreateUserData): Promise<User> => 
-    apiClient.post('/users', data),
-
-  update: (id: string, data: UpdateUserData): Promise<User> => 
-    apiClient.put(`/users/${id}`, data),
-
-  delete: (id: string): Promise<void> => 
-    apiClient.delete(`/users/${id}`)
-};
-
-// lib/api/index.ts
-export { apiClient } from './base';
-export { usersApi } from './users';
-export { authApi } from './auth';
-export { postsApi } from './posts';
-
-// Export types
-export type { ApiResponse, ApiError } from './base';
-```
-
-### **⚡ Code Splitting Strategies**
-
-```typescript
-// ============= ROUTE-BASED CODE SPLITTING =============
-// pages/admin/index.tsx
-import { GetServerSideProps } from 'next';
+// ============= CODE SPLITTING BY ROUTE =============
+// pages/dashboard/index.js
 import dynamic from 'next/dynamic';
-import { useAuth } from '../../features/auth';
+import { useAuth } from '../../lib/hooks';
 
-// Lazy load admin components
-const AdminDashboard = dynamic(() => import('../../features/admin/Dashboard'), {
-  loading: () => <div>Loading admin dashboard...</div>
+// Dynamic imports for dashboard widgets
+const DashboardOverview = dynamic(() => 
+  import('../../components/features/dashboard/Overview'), {
+  loading: () => <div>Loading overview...</div>
 });
 
-const UserManagement = dynamic(() => import('../../features/admin/UserManagement'));
-const SystemSettings = dynamic(() => import('../../features/admin/SystemSettings'));
+const DashboardCharts = dynamic(() => 
+  import('../../components/features/dashboard/Charts'), {
+  loading: () => <div>Loading charts...</div>,
+  ssr: false
+});
 
-const AdminPage = () => {
-  const { user, loading } = useAuth();
+const DashboardTables = dynamic(() => 
+  import('../../components/features/dashboard/Tables'), {
+  loading: () => <div>Loading tables...</div>
+});
 
-  if (loading) return <div>Loading...</div>;
-
-  if (!user || user.role !== 'admin') {
-    return <div>Access denied</div>;
-  }
-
-  return (
-    <div>
-      <h1>Admin Panel</h1>
-      <AdminDashboard />
-      <UserManagement />
-      <SystemSettings />
-    </div>
-  );
-};
-
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  // Server-side auth check
-  const token = context.req.cookies.authToken;
+const Dashboard = () => {
+  const { user, isAuthenticated } = useAuth();
   
-  if (!token) {
-    return {
-      redirect: {
-        destination: '/login',
-        permanent: false
-      }
-    };
+  if (!isAuthenticated) {
+    return <div>Please log in to view dashboard</div>;
   }
-
-  return { props: {} };
-};
-
-export default AdminPage;
-
-// ============= COMPONENT-BASED CODE SPLITTING =============
-// components/FeatureToggle.tsx
-import { useState } from 'react';
-import dynamic from 'next/dynamic';
-
-interface FeatureToggleProps {
-  features: string[];
-  onFeatureLoad?: (feature: string) => void;
-}
-
-const FeatureToggle: React.FC<FeatureToggleProps> = ({ features, onFeatureLoad }) => {
-  const [loadedFeatures, setLoadedFeatures] = useState<Set<string>>(new Set());
-  const [Components, setComponents] = useState<Map<string, React.ComponentType>>(new Map());
-
-  const loadFeature = async (featureName: string) => {
-    if (loadedFeatures.has(featureName)) {
-      return;
-    }
-
-    try {
-      let component;
-      
-      switch (featureName) {
-        case 'charts':
-          component = await import('../features/Charts').then(m => m.default);
-          break;
-        case 'analytics':
-          component = await import('../features/Analytics').then(m => m.default);
-          break;
-        case 'reporting':
-          component = await import('../features/Reporting').then(m => m.default);
-          break;
-        default:
-          throw new Error(`Unknown feature: ${featureName}`);
-      }
-
-      setComponents(prev => new Map(prev).set(featureName, component));
-      setLoadedFeatures(prev => new Set(prev).add(featureName));
-      onFeatureLoad?.(featureName);
-
-    } catch (error) {
-      console.error(`Failed to load feature ${featureName}:`, error);
-    }
-  };
-
+  
   return (
-    <div>
-      <div className="feature-buttons">
-        {features.map(feature => (
-          <button
-            key={feature}
-            onClick={() => loadFeature(feature)}
-            disabled={loadedFeatures.has(feature)}
-          >
-            {loadedFeatures.has(feature) ? `${feature} (Loaded)` : `Load ${feature}`}
-          </button>
-        ))}
-      </div>
-
-      <div className="feature-content">
-        {Array.from(Components.entries()).map(([featureName, Component]) => (
-          <div key={featureName} className="feature-section">
-            <h3>{featureName}</h3>
-            <Component />
-          </div>
-        ))}
+    <div className="dashboard">
+      <h1>Welcome, {user.name}</h1>
+      
+      <div className="dashboard-grid">
+        <section className="overview">
+          <DashboardOverview userId={user.id} />
+        </section>
+        
+        <section className="charts">
+          <DashboardCharts userId={user.id} />
+        </section>
+        
+        <section className="tables">
+          <DashboardTables userId={user.id} />
+        </section>
       </div>
     </div>
   );
 };
 
-export default FeatureToggle;
+export default Dashboard;
 
-// ============= VENDOR CODE SPLITTING =============
-// next.config.js
-module.exports = {
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Split vendor libraries
-    if (!isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          // Vendor chunk
-          vendor: {
-            name: 'vendor',
-            chunks: 'all',
-            test: /node_modules/,
-            priority: 20
-          },
-          // Common chunks
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            priority: 10,
-            reuseExistingChunk: true,
-            enforce: true
-          },
-          // React chunk
-          react: {
-            name: 'react',
-            chunks: 'all',
-            test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
-            priority: 30
-          },
-          // UI library chunk
-          ui: {
-            name: 'ui',
-            chunks: 'all',
-            test: /[\\/]node_modules[\\/](@mui|antd|chakra-ui)[\\/]/,
-            priority: 25
-          }
-        }
-      };
-    }
+// ============= PLUGIN SYSTEM FOR NEXT.JS =============
+// lib/plugins/index.js
+import { pluginManager } from '../core/PluginManager.js';
 
-    return config;
+// Analytics plugin
+const analyticsPlugin = {
+  name: 'analytics',
+  
+  init(manager) {
+    console.log('Analytics plugin initialized');
+    
+    // Add tracking hooks
+    manager.addHook('pageView', async (data) => {
+      if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', 'page_view', {
+          page_title: data.title,
+          page_location: data.url
+        });
+      }
+      return data;
+    });
+    
+    manager.addHook('userEvent', async (data) => {
+      if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', data.action, {
+          event_category: data.category,
+          event_label: data.label,
+          value: data.value
+        });
+      }
+      return data;
+    });
+  },
+  
+  destroy() {
+    console.log('Analytics plugin destroyed');
   }
 };
 
-// ============= PREFETCHING STRATEGIES =============
-// hooks/usePrefetch.ts
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
+// Theme plugin
+const themePlugin = {
+  name: 'theme',
+  
+  init(manager) {
+    console.log('Theme plugin initialized');
+    
+    manager.addHook('themeChange', async (data) => {
+      if (typeof window !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', data.theme);
+        localStorage.setItem('theme', data.theme);
+      }
+      return data;
+    });
+  },
+  
+  destroy() {
+    console.log('Theme plugin destroyed');
+  }
+};
 
-interface PrefetchOptions {
-  routes?: string[];
-  components?: (() => Promise<any>)[];
-  onIdle?: boolean;
-  onHover?: boolean;
+// Register plugins
+pluginManager
+  .register('analytics', analyticsPlugin)
+  .register('theme', themePlugin);
+
+export { pluginManager };
+
+// pages/_app.js
+import { useEffect } from 'react';
+import { pluginManager } from '../lib/plugins';
+
+function MyApp({ Component, pageProps, router }) {
+  useEffect(() => {
+    // Track page views
+    const handleRouteChange = (url) => {
+      pluginManager.executeHook('pageView', {
+        url,
+        title: document.title
+      });
+    };
+    
+    router.events.on('routeChangeComplete', handleRouteChange);
+    
+    return () => {
+      router.events.off('routeChangeComplete', handleRouteChange);
+    };
+  }, [router]);
+  
+  return <Component {...pageProps} />;
 }
 
-export const usePrefetch = (options: PrefetchOptions = {}) => {
-  const router = useRouter();
-  const prefetchedRef = useRef(new Set<string>());
-
-  const prefetchRoute = (route: string) => {
-    if (!prefetchedRef.current.has(route)) {
-      router.prefetch(route);
-      prefetchedRef.current.add(route);
-    }
-  };
-
-  const prefetchComponent = async (componentLoader: () => Promise<any>) => {
-    try {
-      await componentLoader();
-    } catch (error) {
-      console.error('Component prefetch failed:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (options.onIdle && 'requestIdleCallback' in window) {
-      const prefetchOnIdle = () => {
-        options.routes?.forEach(prefetchRoute);
-        options.components?.forEach(prefetchComponent);
-      };
-
-      requestIdleCallback(prefetchOnIdle);
-    } else {
-      // Fallback for browsers without requestIdleCallback
-      const timer = setTimeout(() => {
-        options.routes?.forEach(prefetchRoute);
-        options.components?.forEach(prefetchComponent);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [options.routes, options.components, options.onIdle]);
-
-  const handleMouseEnter = (route: string) => {
-    if (options.onHover) {
-      prefetchRoute(route);
-    }
-  };
-
-  return { prefetchRoute, handleMouseEnter };
-};
-
-// Usage
-const Navigation = () => {
-  const { handleMouseEnter } = usePrefetch({
-    routes: ['/dashboard', '/profile', '/settings'],
-    onIdle: true,
-    onHover: true
-  });
-
-  return (
-    <nav>
-      <Link href="/dashboard">
-        <a onMouseEnter={() => handleMouseEnter('/dashboard')}>
-          Dashboard
-        </a>
-      </Link>
-      <Link href="/profile">
-        <a onMouseEnter={() => handleMouseEnter('/profile')}>
-          Profile
-        </a>
-      </Link>
-    </nav>
-  );
-};
+export default MyApp;
 ```
 
 ## 🎯 แบบฝึกหัด
 
-### **📦 แบบฝึกหัดที่ 1: Module Organization**
-สร้าง module system:
+### **🔧 แบบฝึกหัดที่ 1: Module Organization**
+จัดระเบียบโครงสร้าง modules:
 
 ```javascript
-// TODO: สร้าง module organization
+// TODO: สร้างระบบ module organization
 
-// 1. สร้าง plugin system
-class PluginManager {
-  // Implement plugin loading, unloading
-  // Support hooks and middleware
+// 1. Create a feature-based module system
+// Structure:
+// features/
+//   ├── auth/
+//   ├── dashboard/
+//   ├── users/
+//   └── settings/
+
+// 2. Implement module dependency injection
+class ModuleDI {
+  constructor() {
+    // Implement dependency injection for modules
+  }
 }
 
-// 2. สร้าง module registry
-class ModuleRegistry {
-  // Register modules with dependencies
-  // Support version management
+// 3. Create module hot-reloading system
+class ModuleHotReloader {
+  constructor() {
+    // Implement hot reloading for development
+  }
 }
-
-// 3. สร้าง lazy loading system
-class LazyLoader {
-  // Load modules on demand
-  // Support preloading and caching
-}
-
-// 4. สร้าง barrel exports
-// Organize exports efficiently
 ```
 
-### **⚡ แบบฝึกหัดที่ 2: Dynamic Loading**
-สร้าง dynamic import patterns:
+### **🔄 แบบฝึกหัดที่ 2: Dynamic Module System**
+สร้างระบบ dynamic modules:
 
 ```javascript
-// TODO: สร้าง dynamic loading patterns
+// TODO: สร้าง dynamic module system
 
-// 1. Feature flag system
-class FeatureFlags {
-  // Load features based on flags
-  // Support A/B testing
+// 1. Implement module marketplace
+class ModuleMarketplace {
+  async installModule(moduleId) {
+    // Download and install module dynamically
+  }
+  
+  async uninstallModule(moduleId) {
+    // Remove module and clean up
+  }
 }
 
-// 2. Route-based splitting
-// Split code by routes
-// Preload critical routes
+// 2. Create module sandboxing
+class ModuleSandbox {
+  execute(moduleCode, permissions) {
+    // Execute module code in isolated environment
+  }
+}
 
-// 3. Component lazy loading
-// Load components on interaction
-// Support fallback UI
-
-// 4. Vendor code optimization
-// Split vendor libraries
-// Optimize bundle sizes
+// 3. Implement module versioning
+class ModuleVersionManager {
+  async upgradeModule(moduleId, version) {
+    // Handle module upgrades safely
+  }
+}
 ```
 
-### **⚛️ แบบฝึกหัดที่ 3: Next.js Integration**
-สร้าง Next.js module system:
+### **⚛️ แบบฝึกหัดที่ 3: Next.js Module Integration**
+สร้าง integrated module system:
 
-```tsx
-// TODO: สร้าง Next.js module system
+```jsx
+// TODO: สร้าง Next.js module system ที่:
+// 1. Support plugin architecture
+// 2. Handle dynamic feature loading
+// 3. Implement module permissions
+// 4. Support module marketplace
 
-// 1. Feature-based organization
-// Organize by features not file types
-// Include components, hooks, types
-
-// 2. Smart code splitting
-// Implement intelligent splitting
-// Monitor and optimize bundles
-
-// 3. Module federation
-// Share modules between apps
-// Support micro-frontends
-
-// 4. Performance monitoring
-// Track module load times
-// Optimize critical paths
+const ModularApp = () => {
+  // Implement modular application architecture
+  // Load modules based on user permissions
+  // Handle module lifecycle
+};
 ```
 
 ## 🔗 การเชื่อมต่อ
@@ -1485,8 +1365,8 @@ class FeatureFlags {
 ## 📚 เอกสารอ้างอิง
 
 - [MDN: ES6 Modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules)
+- [MDN: Dynamic Imports](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#dynamic_imports)
 - [Next.js: Dynamic Imports](https://nextjs.org/docs/advanced-features/dynamic-import)
-- [Webpack: Code Splitting](https://webpack.js.org/guides/code-splitting/)
 
 ---
 
@@ -1494,10 +1374,10 @@ class FeatureFlags {
 
 ในบทนี้เราได้เรียนรู้:
 
-- **ES6 Module System** และ import/export patterns
+- **ES6 Module System** (import/export)
+- **Advanced Module Patterns** และ organization
 - **Dynamic Imports** และ code splitting
-- **Module organization** และ architecture patterns
-- **การใช้งานใน Next.js** สำหรับ optimal loading
-- **Performance optimization** ด้วย module strategies
+- **Module Architecture** สำหรับ scalable applications
+- **การใช้งานใน Next.js** สำหรับ modular development
 
-ES6 Modules เป็นพื้นฐานสำคัญของ modern JavaScript ที่ช่วยในการจัดระเบียบโค้ดและ performance optimization! 🚀
+ES6 Modules เป็นพื้นฐานสำคัญสำหรับการจัดระเบียบโค้ดใน modern JavaScript applications! 🚀

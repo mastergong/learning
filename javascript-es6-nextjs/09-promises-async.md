@@ -2,1461 +2,1316 @@
 
 ## 🎯 จุดประสงค์ของบทเรียน
 - เรียนรู้ Promises และ Asynchronous Programming
-- ทำความเข้าใจ async/await syntax
+- ทำความเข้าใจ Async/Await Syntax
 - เรียนรู้ Error Handling ใน Async Code
 - ประยุกต์ใช้ใน Next.js สำหรับ Data Fetching
 
 ## 🔄 Understanding Promises
 
-### **📝 Promise Basics**
+### **⚡ Promise Basics**
 
 ```javascript
-// ============= CREATING PROMISES =============
-// Basic Promise constructor
-const basicPromise = new Promise((resolve, reject) => {
-  const success = Math.random() > 0.5;
-  
-  setTimeout(() => {
-    if (success) {
-      resolve({ message: 'Operation successful!', data: { id: 1, name: 'John' } });
-    } else {
-      reject(new Error('Operation failed!'));
-    }
-  }, 1000);
-});
-
-// Promise states demonstration
-const demonstratePromiseStates = () => {
-  console.log('Creating promise...');
-  
-  const promise = new Promise((resolve, reject) => {
-    console.log('Promise state: pending');
-    
+// ============= PROMISE FUNDAMENTALS =============
+// Creating a basic Promise
+const createPromise = (shouldResolve = true, delay = 1000) => {
+  return new Promise((resolve, reject) => {
     setTimeout(() => {
-      const shouldResolve = Math.random() > 0.3;
-      
       if (shouldResolve) {
-        console.log('Promise state: fulfilled');
-        resolve('Success!');
+        resolve(`Promise resolved after ${delay}ms`);
       } else {
-        console.log('Promise state: rejected');
-        reject(new Error('Failed!'));
+        reject(new Error(`Promise rejected after ${delay}ms`));
       }
-    }, 2000);
+    }, delay);
   });
-  
-  return promise;
 };
 
-// ============= PROMISE METHODS =============
-// Using .then() and .catch()
-basicPromise
-  .then(result => {
-    console.log('Success:', result);
-    return result.data; // Return value for next .then()
-  })
-  .then(data => {
-    console.log('Extracted data:', data);
-    return `Processed: ${data.name}`;
-  })
-  .then(processed => {
-    console.log('Final result:', processed);
-  })
-  .catch(error => {
-    console.error('Error:', error.message);
-  })
-  .finally(() => {
-    console.log('Promise chain completed');
-  });
+// Promise states: pending, fulfilled, rejected
+const pendingPromise = createPromise(true, 2000);
+console.log('Promise state:', pendingPromise); // Promise { <pending> }
 
 // ============= PROMISE CHAINING =============
 const fetchUserData = (userId) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     setTimeout(() => {
-      if (userId > 0) {
-        resolve({ id: userId, name: `User ${userId}`, email: `user${userId}@example.com` });
-      } else {
-        reject(new Error('Invalid user ID'));
-      }
+      resolve({
+        id: userId,
+        name: `User ${userId}`,
+        email: `user${userId}@example.com`
+      });
     }, 500);
   });
 };
 
 const fetchUserPosts = (userId) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     setTimeout(() => {
       resolve([
-        { id: 1, title: 'First Post', content: 'Content 1' },
-        { id: 2, title: 'Second Post', content: 'Content 2' }
+        { id: 1, title: 'First Post', userId },
+        { id: 2, title: 'Second Post', userId }
       ]);
     }, 300);
   });
 };
 
-const fetchUserComments = (userId) => {
-  return new Promise((resolve, reject) => {
+const fetchPostComments = (postId) => {
+  return new Promise((resolve) => {
     setTimeout(() => {
       resolve([
-        { id: 1, text: 'Great post!', postId: 1 },
-        { id: 2, text: 'Thanks for sharing', postId: 2 }
+        { id: 1, text: 'Great post!', postId },
+        { id: 2, text: 'Thanks for sharing', postId }
       ]);
     }, 200);
   });
 };
 
-// Sequential promise chaining
-const loadUserProfile = (userId) => {
-  let userData;
-  
-  return fetchUserData(userId)
-    .then(user => {
-      userData = user;
-      console.log('Fetched user:', user);
-      return fetchUserPosts(user.id);
-    })
-    .then(posts => {
-      userData.posts = posts;
-      console.log('Fetched posts:', posts);
-      return fetchUserComments(userData.id);
-    })
-    .then(comments => {
-      userData.comments = comments;
-      console.log('Fetched comments:', comments);
-      return userData;
-    })
-    .catch(error => {
-      console.error('Error loading user profile:', error);
-      throw error;
-    });
-};
-
-// Usage
-loadUserProfile(1)
-  .then(completeProfile => {
-    console.log('Complete profile:', completeProfile);
+// Chaining with .then()
+fetchUserData(1)
+  .then(user => {
+    console.log('User:', user);
+    return fetchUserPosts(user.id);
+  })
+  .then(posts => {
+    console.log('Posts:', posts);
+    return fetchPostComments(posts[0].id);
+  })
+  .then(comments => {
+    console.log('Comments:', comments);
   })
   .catch(error => {
-    console.error('Failed to load profile:', error);
+    console.error('Error in chain:', error);
+  })
+  .finally(() => {
+    console.log('Promise chain completed');
   });
 
 // ============= PROMISE COMBINATORS =============
 // Promise.all - Wait for all promises to resolve
-const loadAllUserData = async (userIds) => {
+const fetchAllUserData = async (userId) => {
   try {
-    console.log('Loading data for all users...');
+    const [user, posts] = await Promise.all([
+      fetchUserData(userId),
+      fetchUserPosts(userId)
+    ]);
     
-    const userPromises = userIds.map(id => fetchUserData(id));
-    const users = await Promise.all(userPromises);
-    
-    console.log('All users loaded:', users);
-    return users;
+    return {
+      user,
+      posts,
+      combinedAt: new Date()
+    };
   } catch (error) {
-    console.error('Failed to load all users:', error);
-    throw error;
+    throw new Error(`Failed to fetch user data: ${error.message}`);
   }
 };
 
-// Promise.allSettled - Wait for all promises to settle (resolve or reject)
-const loadAllUserDataSafe = async (userIds) => {
-  console.log('Loading data for all users (safe mode)...');
+// Promise.allSettled - Wait for all promises to settle
+const fetchUserDataSafely = async (userIds) => {
+  const promises = userIds.map(id => fetchUserData(id));
+  const results = await Promise.allSettled(promises);
   
-  const userPromises = userIds.map(id => fetchUserData(id));
-  const results = await Promise.allSettled(userPromises);
-  
-  const successful = results
+  const succeeded = results
     .filter(result => result.status === 'fulfilled')
     .map(result => result.value);
-    
+  
   const failed = results
     .filter(result => result.status === 'rejected')
     .map(result => result.reason);
   
-  console.log('Successful loads:', successful);
-  console.log('Failed loads:', failed);
-  
-  return { successful, failed };
+  return { succeeded, failed };
 };
 
-// Promise.race - Return first promise to settle
-const timeoutWrapper = (promise, timeoutMs) => {
-  const timeout = new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
+// Promise.race - First promise to settle wins
+const fetchWithTimeout = (promise, timeoutMs) => {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Operation timed out')), timeoutMs);
   });
   
-  return Promise.race([promise, timeout]);
+  return Promise.race([promise, timeoutPromise]);
 };
 
-// Promise.any - Return first promise to resolve (ignores rejections)
-const tryMultipleEndpoints = (endpoints) => {
-  const requests = endpoints.map(endpoint => 
-    fetch(endpoint).then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    })
-  );
+// Usage
+fetchWithTimeout(fetchUserData(1), 1000)
+  .then(user => console.log('User fetched in time:', user))
+  .catch(error => console.error('Timeout or error:', error));
+
+// Promise.any - First fulfilled promise wins (ES2021)
+const fetchFromMultipleSources = async (userId) => {
+  const sources = [
+    fetch(`/api/users/${userId}`),
+    fetch(`/api/backup/users/${userId}`),
+    fetch(`/api/cache/users/${userId}`)
+  ];
   
-  return Promise.any(requests);
+  try {
+    const firstResponse = await Promise.any(sources);
+    return await firstResponse.json();
+  } catch (error) {
+    throw new Error('All sources failed');
+  }
 };
 
-// ============= ERROR HANDLING PATTERNS =============
-class PromiseErrorHandler {
-  static withRetry(promiseFactory, maxRetries = 3, delayMs = 1000) {
-    return new Promise(async (resolve, reject) => {
-      let lastError;
+// ============= ADVANCED PROMISE PATTERNS =============
+class PromiseQueue {
+  constructor(concurrency = 3) {
+    this.concurrency = concurrency;
+    this.running = 0;
+    this.queue = [];
+  }
+  
+  add(promiseFactory) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({
+        promiseFactory,
+        resolve,
+        reject
+      });
       
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          const result = await promiseFactory();
-          resolve(result);
-          return;
-        } catch (error) {
-          lastError = error;
-          console.log(`Attempt ${attempt} failed:`, error.message);
-          
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
-          }
-        }
-      }
-      
-      reject(new Error(`All ${maxRetries} attempts failed. Last error: ${lastError.message}`));
+      this.tryNext();
     });
   }
   
-  static withCircuitBreaker(promiseFactory, failureThreshold = 5, resetTimeoutMs = 60000) {
-    let failures = 0;
-    let lastFailTime = null;
-    let state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+  tryNext() {
+    if (this.running >= this.concurrency || this.queue.length === 0) {
+      return;
+    }
     
-    return () => {
-      return new Promise(async (resolve, reject) => {
-        const now = Date.now();
-        
-        // Check if circuit should reset
-        if (state === 'OPEN' && now - lastFailTime >= resetTimeoutMs) {
-          state = 'HALF_OPEN';
-          failures = 0;
-        }
-        
-        // Reject immediately if circuit is open
-        if (state === 'OPEN') {
-          reject(new Error('Circuit breaker is OPEN'));
-          return;
-        }
-        
-        try {
-          const result = await promiseFactory();
-          
-          // Reset on success
-          if (state === 'HALF_OPEN') {
-            state = 'CLOSED';
-          }
-          failures = 0;
-          
-          resolve(result);
-        } catch (error) {
-          failures++;
-          lastFailTime = now;
-          
-          if (failures >= failureThreshold) {
-            state = 'OPEN';
-          }
-          
-          reject(error);
-        }
+    this.running++;
+    const { promiseFactory, resolve, reject } = this.queue.shift();
+    
+    promiseFactory()
+      .then(resolve)
+      .catch(reject)
+      .finally(() => {
+        this.running--;
+        this.tryNext();
       });
-    };
   }
 }
 
-// Usage examples
+// Usage
+const queue = new PromiseQueue(2);
+
+const fetchOperations = Array.from({ length: 10 }, (_, i) => 
+  queue.add(() => fetchUserData(i + 1))
+);
+
+Promise.all(fetchOperations)
+  .then(users => console.log('All users fetched:', users))
+  .catch(error => console.error('Queue error:', error));
+
+// ============= RETRY PATTERN =============
+const retryWithBackoff = async (operation, maxRetries = 3, baseDelay = 1000) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw new Error(`Operation failed after ${maxRetries} attempts: ${error.message}`);
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt - 1); // Exponential backoff
+      console.log(`Attempt ${attempt} failed, retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
+
+// Usage
 const unreliableOperation = () => {
   return new Promise((resolve, reject) => {
-    if (Math.random() > 0.7) {
-      resolve('Success!');
-    } else {
+    if (Math.random() < 0.7) {
       reject(new Error('Random failure'));
+    } else {
+      resolve('Success!');
     }
   });
 };
 
-// With retry
-PromiseErrorHandler.withRetry(unreliableOperation, 3, 500)
-  .then(result => console.log('Retry result:', result))
-  .catch(error => console.error('Retry failed:', error));
-
-// With circuit breaker
-const protectedOperation = PromiseErrorHandler.withCircuitBreaker(unreliableOperation, 3, 5000);
-
-// Multiple calls will trigger circuit breaker
-for (let i = 0; i < 10; i++) {
-  setTimeout(() => {
-    protectedOperation()
-      .then(result => console.log(`Call ${i + 1} result:`, result))
-      .catch(error => console.error(`Call ${i + 1} error:`, error.message));
-  }, i * 200);
-}
+retryWithBackoff(unreliableOperation, 5, 500)
+  .then(result => console.log('Operation succeeded:', result))
+  .catch(error => console.error('Operation failed permanently:', error));
 ```
 
-## ⚡ Async/Await
+## 🚀 Async/Await
 
-### **🔧 Async/Await Basics**
+### **🔄 Async Function Syntax**
 
 ```javascript
-// ============= CONVERTING PROMISES TO ASYNC/AWAIT =============
-// Promise-based version
-function loadUserProfilePromises(userId) {
+// ============= BASIC ASYNC/AWAIT =============
+// Converting Promise chains to async/await
+const getUserDataChain = (userId) => {
   return fetchUserData(userId)
     .then(user => {
-      return Promise.all([
-        Promise.resolve(user),
-        fetchUserPosts(user.id),
-        fetchUserComments(user.id)
-      ]);
-    })
-    .then(([user, posts, comments]) => {
-      return {
-        ...user,
-        posts,
-        comments,
-        totalPosts: posts.length,
-        totalComments: comments.length
-      };
-    })
-    .catch(error => {
-      console.error('Error loading profile:', error);
-      throw error;
+      return fetchUserPosts(user.id)
+        .then(posts => {
+          return { user, posts };
+        });
     });
-}
+};
 
-// Async/await version - much cleaner!
-async function loadUserProfileAsync(userId) {
+// Equivalent async/await version
+const getUserDataAsync = async (userId) => {
   try {
     const user = await fetchUserData(userId);
-    
-    // Parallel execution
-    const [posts, comments] = await Promise.all([
-      fetchUserPosts(user.id),
-      fetchUserComments(user.id)
-    ]);
-    
-    return {
-      ...user,
-      posts,
-      comments,
-      totalPosts: posts.length,
-      totalComments: comments.length
-    };
+    const posts = await fetchUserPosts(user.id);
+    return { user, posts };
   } catch (error) {
-    console.error('Error loading profile:', error);
-    throw error;
+    throw new Error(`Failed to get user data: ${error.message}`);
+  }
+};
+
+// ============= PARALLEL EXECUTION =============
+// Sequential execution (slower)
+const fetchUserDataSequential = async (userId) => {
+  const user = await fetchUserData(userId);      // Wait 500ms
+  const posts = await fetchUserPosts(userId);    // Wait another 300ms
+  const profile = await fetchUserProfile(userId); // Wait another 400ms
+  
+  return { user, posts, profile }; // Total: ~1200ms
+};
+
+// Parallel execution (faster)
+const fetchUserDataParallel = async (userId) => {
+  const [user, posts, profile] = await Promise.all([
+    fetchUserData(userId),      // All start together
+    fetchUserPosts(userId),     // All start together
+    fetchUserProfile(userId)    // All start together
+  ]);
+  
+  return { user, posts, profile }; // Total: ~500ms (slowest operation)
+};
+
+// ============= ERROR HANDLING =============
+const robustDataFetcher = async (userId) => {
+  try {
+    // Try primary source
+    const user = await fetchUserData(userId);
+    
+    try {
+      // Try to get additional data
+      const posts = await fetchUserPosts(userId);
+      return { user, posts, source: 'complete' };
+    } catch (postsError) {
+      console.warn('Could not fetch posts:', postsError.message);
+      return { user, posts: [], source: 'partial' };
+    }
+    
+  } catch (userError) {
+    console.error('Could not fetch user:', userError.message);
+    
+    // Try fallback
+    try {
+      const cachedUser = await fetchCachedUser(userId);
+      return { user: cachedUser, posts: [], source: 'cached' };
+    } catch (cacheError) {
+      throw new Error('All data sources failed');
+    }
+  }
+};
+
+// ============= ASYNC GENERATORS =============
+async function* fetchUsersPaginated(pageSize = 10) {
+  let page = 1;
+  let hasMore = true;
+  
+  while (hasMore) {
+    try {
+      const response = await fetch(`/api/users?page=${page}&limit=${pageSize}`);
+      const data = await response.json();
+      
+      if (data.users.length === 0) {
+        hasMore = false;
+      } else {
+        yield data.users;
+        page++;
+        hasMore = data.hasMore;
+      }
+    } catch (error) {
+      console.error('Error fetching page:', error);
+      hasMore = false;
+    }
   }
 }
 
-// ============= ASYNC/AWAIT PATTERNS =============
-class AsyncDataProcessor {
-  constructor() {
+// Usage
+const processAllUsers = async () => {
+  for await (const userBatch of fetchUsersPaginated(5)) {
+    console.log(`Processing batch of ${userBatch.length} users`);
+    
+    // Process each user in the batch
+    await Promise.all(userBatch.map(async (user) => {
+      // Simulate processing
+      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log(`Processed user: ${user.name}`);
+    }));
+  }
+};
+
+// ============= ADVANCED ASYNC PATTERNS =============
+class AsyncCache {
+  constructor(ttl = 60000) { // 1 minute TTL
     this.cache = new Map();
-    this.pendingRequests = new Map();
+    this.ttl = ttl;
   }
   
-  // Cached async function
-  async getCachedData(key, fetcher, ttlMs = 300000) {
-    const now = Date.now();
+  async get(key, fetchFunction) {
     const cached = this.cache.get(key);
     
-    if (cached && now - cached.timestamp < ttlMs) {
+    if (cached && Date.now() - cached.timestamp < this.ttl) {
       return cached.data;
     }
     
-    // Prevent duplicate requests
-    if (this.pendingRequests.has(key)) {
-      return this.pendingRequests.get(key);
-    }
-    
-    const promise = fetcher().then(data => {
-      this.cache.set(key, { data, timestamp: now });
-      this.pendingRequests.delete(key);
+    try {
+      const data = await fetchFunction();
+      this.cache.set(key, {
+        data,
+        timestamp: Date.now()
+      });
       return data;
-    }).catch(error => {
-      this.pendingRequests.delete(key);
+    } catch (error) {
+      // Return stale data if available
+      if (cached) {
+        console.warn('Using stale data due to fetch error:', error.message);
+        return cached.data;
+      }
       throw error;
+    }
+  }
+  
+  clear() {
+    this.cache.clear();
+  }
+  
+  delete(key) {
+    this.cache.delete(key);
+  }
+}
+
+// Usage
+const cache = new AsyncCache(30000); // 30 second TTL
+
+const getCachedUserData = async (userId) => {
+  return cache.get(`user:${userId}`, () => fetchUserData(userId));
+};
+
+// ============= ASYNC ITERATION =============
+const processUsersSequentially = async (userIds) => {
+  const results = [];
+  
+  for (const userId of userIds) {
+    try {
+      const userData = await getCachedUserData(userId);
+      const processedData = await processUser(userData);
+      results.push(processedData);
+    } catch (error) {
+      console.error(`Failed to process user ${userId}:`, error);
+      results.push({ error: error.message, userId });
+    }
+  }
+  
+  return results;
+};
+
+const processUsersConcurrently = async (userIds, concurrency = 3) => {
+  const results = [];
+  const chunks = [];
+  
+  // Split into chunks
+  for (let i = 0; i < userIds.length; i += concurrency) {
+    chunks.push(userIds.slice(i, i + concurrency));
+  }
+  
+  // Process each chunk
+  for (const chunk of chunks) {
+    const chunkResults = await Promise.allSettled(
+      chunk.map(async (userId) => {
+        const userData = await getCachedUserData(userId);
+        return await processUser(userData);
+      })
+    );
+    
+    results.push(...chunkResults);
+  }
+  
+  return results;
+};
+```
+
+### **🛠️ Advanced Async Utilities**
+
+```javascript
+// ============= ASYNC UTILITY FUNCTIONS =============
+class AsyncUtils {
+  // Sleep/delay function
+  static sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+  
+  // Timeout wrapper
+  static timeout(promise, ms, errorMessage = 'Operation timed out') {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(errorMessage)), ms);
     });
     
-    this.pendingRequests.set(key, promise);
-    return promise;
+    return Promise.race([promise, timeoutPromise]);
   }
   
-  // Sequential processing
-  async processSequentially(items, processor) {
-    const results = [];
+  // Retry with exponential backoff
+  static async retry(fn, options = {}) {
+    const {
+      retries = 3,
+      delay = 1000,
+      backoff = 2,
+      jitter = true
+    } = options;
     
-    for (const item of items) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        const result = await processor(item);
-        results.push({ success: true, data: result, item });
+        return await fn();
       } catch (error) {
-        results.push({ success: false, error, item });
+        if (attempt === retries) throw error;
+        
+        let waitTime = delay * Math.pow(backoff, attempt - 1);
+        
+        // Add jitter to prevent thundering herd
+        if (jitter) {
+          waitTime += Math.random() * waitTime * 0.1;
+        }
+        
+        await this.sleep(waitTime);
       }
     }
-    
-    return results;
   }
   
-  // Parallel processing with concurrency limit
-  async processWithConcurrency(items, processor, concurrency = 3) {
+  // Map with concurrency control
+  static async mapWithConcurrency(items, fn, concurrency = 3) {
     const results = [];
     const executing = [];
     
     for (const item of items) {
-      const promise = processor(item)
-        .then(data => ({ success: true, data, item }))
-        .catch(error => ({ success: false, error, item }));
+      const promise = fn(item).then(result => {
+        executing.splice(executing.indexOf(promise), 1);
+        return result;
+      });
       
       results.push(promise);
+      executing.push(promise);
       
-      if (results.length >= concurrency) {
-        executing.push(promise);
-        
-        if (executing.length >= concurrency) {
-          await Promise.race(executing);
-          executing.splice(executing.findIndex(p => p.isFulfilled), 1);
-        }
+      if (executing.length >= concurrency) {
+        await Promise.race(executing);
       }
     }
     
     return Promise.all(results);
   }
   
-  // Async iteration
-  async* asyncGenerator(items, processor) {
-    for (const item of items) {
-      try {
-        const result = await processor(item);
-        yield { success: true, data: result, item };
-      } catch (error) {
-        yield { success: false, error, item };
-      }
-    }
-  }
-  
-  // Async pipeline
-  async pipeline(...stages) {
-    return async (input) => {
-      let result = input;
-      
-      for (const stage of stages) {
-        result = await stage(result);
-      }
-      
-      return result;
-    };
-  }
-}
-
-// ============= REAL-WORLD ASYNC EXAMPLES =============
-// File processing with async/await
-class FileProcessor {
-  async processFiles(files) {
-    const results = [];
+  // Waterfall execution
+  static async waterfall(functions, initialValue) {
+    let result = initialValue;
     
-    for (const file of files) {
-      try {
-        console.log(`Processing ${file.name}...`);
-        
-        // Simulate file reading
-        const content = await this.readFile(file);
-        
-        // Simulate processing
-        const processed = await this.processContent(content);
-        
-        // Simulate saving
-        const saved = await this.saveProcessed(processed, file.name);
-        
-        results.push({
-          file: file.name,
-          success: true,
-          output: saved
-        });
-        
-        console.log(`✓ Completed ${file.name}`);
-      } catch (error) {
-        console.error(`✗ Failed ${file.name}:`, error.message);
-        results.push({
-          file: file.name,
-          success: false,
-          error: error.message
-        });
-      }
+    for (const fn of functions) {
+      result = await fn(result);
     }
     
-    return results;
+    return result;
   }
   
-  async readFile(file) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (file.size > 1000000) {
-          reject(new Error('File too large'));
-        } else {
-          resolve(`Content of ${file.name}`);
-        }
-      }, Math.random() * 1000);
-    });
-  }
-  
-  async processContent(content) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(content.toUpperCase());
-      }, Math.random() * 500);
-    });
-  }
-  
-  async saveProcessed(content, filename) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (Math.random() > 0.1) {
-          resolve(`processed_${filename}`);
-        } else {
-          reject(new Error('Save failed'));
-        }
-      }, Math.random() * 300);
-    });
-  }
-}
-
-// API client with async/await
-class ApiClient {
-  constructor(baseURL) {
-    this.baseURL = baseURL;
-    this.authToken = null;
-  }
-  
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers
-    };
+  // Parallel execution with results
+  static async parallel(tasks) {
+    const results = await Promise.allSettled(
+      Object.entries(tasks).map(async ([key, task]) => {
+        const result = await task();
+        return { key, result };
+      })
+    );
     
-    if (this.authToken) {
-      headers.Authorization = `Bearer ${this.authToken}`;
-    }
+    const success = {};
+    const errors = {};
     
+    results.forEach(({ status, value, reason }) => {
+      if (status === 'fulfilled') {
+        success[value.key] = value.result;
+      } else {
+        errors[value?.key || 'unknown'] = reason;
+      }
+    });
+    
+    return { success, errors };
+  }
+  
+  // Race with timeout and fallback
+  static async raceWithFallback(primary, fallback, timeout = 5000) {
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      return data;
+      return await this.timeout(primary(), timeout);
     } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
-      throw error;
-    }
-  }
-  
-  async get(endpoint, params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const url = queryString ? `${endpoint}?${queryString}` : endpoint;
-    return this.request(url);
-  }
-  
-  async post(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-  
-  async put(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-  
-  async delete(endpoint) {
-    return this.request(endpoint, {
-      method: 'DELETE'
-    });
-  }
-  
-  async authenticate(credentials) {
-    try {
-      const response = await this.post('/auth/login', credentials);
-      this.authToken = response.token;
-      return response;
-    } catch (error) {
-      console.error('Authentication failed:', error);
-      throw error;
-    }
-  }
-  
-  async refreshToken() {
-    try {
-      const response = await this.post('/auth/refresh');
-      this.authToken = response.token;
-      return response;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      this.authToken = null;
-      throw error;
+      console.warn('Primary failed, using fallback:', error.message);
+      return await fallback();
     }
   }
 }
 
-// ============= ASYNC ERROR HANDLING =============
-class AsyncErrorHandler {
-  static async safeExecute(asyncFn, fallback = null) {
-    try {
-      return await asyncFn();
-    } catch (error) {
-      console.error('Async operation failed:', error);
-      return fallback;
+// ============= USAGE EXAMPLES =============
+const demonstrateAsyncUtils = async () => {
+  // Retry example
+  const unreliableApi = () => {
+    if (Math.random() < 0.7) {
+      throw new Error('API temporarily unavailable');
     }
-  }
+    return Promise.resolve('API response');
+  };
   
-  static async withTimeout(promise, timeoutMs) {
-    const timeout = new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Operation timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-    });
-    
-    return Promise.race([promise, timeout]);
-  }
-  
-  static async retry(asyncFn, maxAttempts = 3, delayMs = 1000) {
-    let lastError;
-    
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await asyncFn();
-      } catch (error) {
-        lastError = error;
-        console.log(`Attempt ${attempt} failed:`, error.message);
-        
-        if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
-        }
-      }
-    }
-    
-    throw lastError;
-  }
-  
-  static async parallel(asyncFunctions, { failFast = false, maxConcurrency = Infinity } = {}) {
-    if (maxConcurrency === Infinity) {
-      return failFast ? Promise.all(asyncFunctions) : Promise.allSettled(asyncFunctions);
-    }
-    
-    const results = [];
-    const executing = [];
-    
-    for (let i = 0; i < asyncFunctions.length; i++) {
-      const promise = asyncFunctions[i]();
-      
-      if (executing.length >= maxConcurrency) {
-        await Promise.race(executing);
-        executing.splice(0, 1);
-      }
-      
-      executing.push(promise);
-      results.push(promise);
-    }
-    
-    return failFast ? Promise.all(results) : Promise.allSettled(results);
-  }
-}
-
-// Usage examples
-const processor = new AsyncDataProcessor();
-const fileProcessor = new FileProcessor();
-const apiClient = new ApiClient('https://api.example.com');
-
-// Example usage
-(async () => {
   try {
-    // Cached data fetching
-    const userData = await processor.getCachedData(
-      'user-123',
-      () => fetchUserData(123)
-    );
-    
-    // File processing
-    const files = [
-      { name: 'file1.txt', size: 500 },
-      { name: 'file2.txt', size: 1000 },
-      { name: 'file3.txt', size: 2000000 } // This will fail
-    ];
-    
-    const fileResults = await fileProcessor.processFiles(files);
-    console.log('File processing results:', fileResults);
-    
-    // API operations with error handling
-    const safeApiCall = await AsyncErrorHandler.safeExecute(
-      () => apiClient.get('/users'),
-      [] // fallback value
-    );
-    
-    console.log('API result:', safeApiCall);
-    
+    const result = await AsyncUtils.retry(unreliableApi, {
+      retries: 5,
+      delay: 500,
+      backoff: 1.5
+    });
+    console.log('Retry result:', result);
   } catch (error) {
-    console.error('Main async operation failed:', error);
+    console.error('Retry failed:', error.message);
   }
-})();
+  
+  // Concurrent mapping
+  const userIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  
+  const processUser = async (userId) => {
+    await AsyncUtils.sleep(Math.random() * 1000); // Simulate work
+    return { userId, processed: true, timestamp: Date.now() };
+  };
+  
+  const processedUsers = await AsyncUtils.mapWithConcurrency(
+    userIds, 
+    processUser, 
+    3 // Max 3 concurrent operations
+  );
+  
+  console.log('Processed users:', processedUsers);
+  
+  // Waterfall example
+  const waterflowOperations = [
+    async (data) => ({ ...data, step1: 'completed' }),
+    async (data) => ({ ...data, step2: 'completed' }),
+    async (data) => ({ ...data, step3: 'completed' }),
+  ];
+  
+  const waterfallResult = await AsyncUtils.waterfall(
+    waterflowOperations, 
+    { initial: true }
+  );
+  
+  console.log('Waterfall result:', waterfallResult);
+  
+  // Parallel tasks
+  const parallelTasks = {
+    userData: () => fetchUserData(1),
+    userPosts: () => fetchUserPosts(1),
+    userSettings: () => AsyncUtils.sleep(500).then(() => ({ theme: 'dark' }))
+  };
+  
+  const { success, errors } = await AsyncUtils.parallel(parallelTasks);
+  console.log('Parallel success:', success);
+  console.log('Parallel errors:', errors);
+};
 ```
 
 ## 🚀 Next.js Applications
 
-### **📊 Data Fetching Patterns**
-
-```jsx
-// hooks/useAsyncData.js
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-export const useAsyncData = (asyncFunction, dependencies = [], options = {}) => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastFetch, setLastFetch] = useState(null);
-  
-  const abortControllerRef = useRef();
-  const cacheRef = useRef(new Map());
-  
-  const {
-    cacheKey,
-    cacheTtl = 300000, // 5 minutes
-    retries = 3,
-    retryDelay = 1000,
-    timeout = 10000
-  } = options;
-  
-  const fetchData = useCallback(async (force = false) => {
-    // Check cache first
-    if (cacheKey && !force) {
-      const cached = cacheRef.current.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < cacheTtl) {
-        setData(cached.data);
-        setLastFetch(new Date(cached.timestamp));
-        return cached.data;
-      }
-    }
-    
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
-    
-    setLoading(true);
-    setError(null);
-    
-    let attempt = 1;
-    
-    while (attempt <= retries) {
-      try {
-        // Add timeout wrapper
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Request timeout')), timeout);
-        });
-        
-        const dataPromise = asyncFunction(signal);
-        const result = await Promise.race([dataPromise, timeoutPromise]);
-        
-        // Cache the result
-        if (cacheKey) {
-          cacheRef.current.set(cacheKey, {
-            data: result,
-            timestamp: Date.now()
-          });
-        }
-        
-        setData(result);
-        setLastFetch(new Date());
-        setLoading(false);
-        
-        return result;
-        
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          break; // Don't retry if aborted
-        }
-        
-        if (attempt === retries) {
-          setError(err);
-          setLoading(false);
-          throw err;
-        }
-        
-        // Wait before retry
-        await new Promise(resolve => 
-          setTimeout(resolve, retryDelay * attempt)
-        );
-        attempt++;
-      }
-    }
-  }, [asyncFunction, cacheKey, cacheTtl, retries, retryDelay, timeout, ...dependencies]);
-  
-  const refetch = useCallback(() => {
-    return fetchData(true);
-  }, [fetchData]);
-  
-  const clearCache = useCallback(() => {
-    if (cacheKey) {
-      cacheRef.current.delete(cacheKey);
-    }
-  }, [cacheKey]);
-  
-  useEffect(() => {
-    fetchData();
-    
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchData]);
-  
-  return {
-    data,
-    loading,
-    error,
-    lastFetch,
-    refetch,
-    clearCache
-  };
-};
-
-// hooks/useAsyncOperation.js
-export const useAsyncOperation = () => {
-  const [operations, setOperations] = useState(new Map());
-  
-  const execute = useCallback(async (operationId, asyncFn, options = {}) => {
-    const { 
-      onSuccess, 
-      onError, 
-      onStart, 
-      onFinally,
-      timeout = 30000 
-    } = options;
-    
-    // Update operation state
-    setOperations(prev => new Map(prev).set(operationId, {
-      loading: true,
-      error: null,
-      data: null,
-      startTime: Date.now()
-    }));
-    
-    if (onStart) onStart();
-    
-    try {
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Operation timeout')), timeout);
-      });
-      
-      const result = await Promise.race([asyncFn(), timeoutPromise]);
-      
-      setOperations(prev => new Map(prev).set(operationId, {
-        loading: false,
-        error: null,
-        data: result,
-        startTime: prev.get(operationId)?.startTime,
-        endTime: Date.now()
-      }));
-      
-      if (onSuccess) onSuccess(result);
-      return result;
-      
-    } catch (error) {
-      setOperations(prev => new Map(prev).set(operationId, {
-        loading: false,
-        error,
-        data: null,
-        startTime: prev.get(operationId)?.startTime,
-        endTime: Date.now()
-      }));
-      
-      if (onError) onError(error);
-      throw error;
-      
-    } finally {
-      if (onFinally) onFinally();
-    }
-  }, []);
-  
-  const getOperation = useCallback((operationId) => {
-    return operations.get(operationId) || {
-      loading: false,
-      error: null,
-      data: null
-    };
-  }, [operations]);
-  
-  const clearOperation = useCallback((operationId) => {
-    setOperations(prev => {
-      const next = new Map(prev);
-      next.delete(operationId);
-      return next;
-    });
-  }, []);
-  
-  return {
-    execute,
-    getOperation,
-    clearOperation,
-    operations: Object.fromEntries(operations)
-  };
-};
-
-// components/AsyncDataComponent.jsx
-import { useAsyncData, useAsyncOperation } from '../hooks/useAsyncData';
-
-const AsyncDataComponent = ({ userId }) => {
-  const [selectedTab, setSelectedTab] = useState('profile');
-  const { execute, getOperation } = useAsyncOperation();
-  
-  // User profile data
-  const {
-    data: profile,
-    loading: profileLoading,
-    error: profileError,
-    refetch: refetchProfile
-  } = useAsyncData(
-    async (signal) => {
-      const response = await fetch(`/api/users/${userId}`, { signal });
-      if (!response.ok) throw new Error('Failed to fetch profile');
-      return response.json();
-    },
-    [userId],
-    {
-      cacheKey: `user-${userId}`,
-      cacheTtl: 300000,
-      retries: 3
-    }
-  );
-  
-  // User posts data
-  const {
-    data: posts,
-    loading: postsLoading,
-    error: postsError,
-    refetch: refetchPosts
-  } = useAsyncData(
-    async (signal) => {
-      const response = await fetch(`/api/users/${userId}/posts`, { signal });
-      if (!response.ok) throw new Error('Failed to fetch posts');
-      return response.json();
-    },
-    [userId],
-    {
-      cacheKey: `user-posts-${userId}`,
-      cacheTtl: 180000 // 3 minutes
-    }
-  );
-  
-  // Update profile operation
-  const handleUpdateProfile = async (updates) => {
-    try {
-      await execute('updateProfile', async () => {
-        const response = await fetch(`/api/users/${userId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates)
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to update profile');
-        }
-        
-        return response.json();
-      }, {
-        onSuccess: () => {
-          refetchProfile();
-          // Show success message
-        },
-        onError: (error) => {
-          // Show error message
-          console.error('Update failed:', error);
-        }
-      });
-    } catch (error) {
-      // Error is already handled by the operation
-    }
-  };
-  
-  // Delete post operation
-  const handleDeletePost = async (postId) => {
-    if (!confirm('Are you sure you want to delete this post?')) {
-      return;
-    }
-    
-    try {
-      await execute(`deletePost-${postId}`, async () => {
-        const response = await fetch(`/api/posts/${postId}`, {
-          method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to delete post');
-        }
-      }, {
-        onSuccess: () => {
-          refetchPosts();
-          // Show success message
-        }
-      });
-    } catch (error) {
-      // Error handling
-    }
-  };
-  
-  const updateOperation = getOperation('updateProfile');
-  
-  if (profileLoading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Loading profile...</p>
-      </div>
-    );
-  }
-  
-  if (profileError) {
-    return (
-      <div className="error-container">
-        <h3>Error Loading Profile</h3>
-        <p>{profileError.message}</p>
-        <button onClick={refetchProfile}>Retry</button>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="async-data-component">
-      <div className="profile-header">
-        <img src={profile?.avatar} alt={profile?.name} />
-        <div className="profile-info">
-          <h1>{profile?.name}</h1>
-          <p>{profile?.email}</p>
-          
-          <button 
-            onClick={() => handleUpdateProfile({ lastActive: new Date() })}
-            disabled={updateOperation.loading}
-          >
-            {updateOperation.loading ? 'Updating...' : 'Update Last Active'}
-          </button>
-          
-          {updateOperation.error && (
-            <div className="error">
-              Update failed: {updateOperation.error.message}
-            </div>
-          )}
-        </div>
-      </div>
-      
-      <div className="tabs">
-        <button 
-          className={selectedTab === 'profile' ? 'active' : ''}
-          onClick={() => setSelectedTab('profile')}
-        >
-          Profile
-        </button>
-        <button 
-          className={selectedTab === 'posts' ? 'active' : ''}
-          onClick={() => setSelectedTab('posts')}
-        >
-          Posts {postsLoading && '(Loading...)'}
-        </button>
-      </div>
-      
-      <div className="tab-content">
-        {selectedTab === 'profile' && (
-          <div className="profile-details">
-            <h2>Profile Details</h2>
-            <pre>{JSON.stringify(profile, null, 2)}</pre>
-          </div>
-        )}
-        
-        {selectedTab === 'posts' && (
-          <div className="posts-section">
-            <div className="posts-header">
-              <h2>Posts</h2>
-              <button onClick={refetchPosts}>Refresh</button>
-            </div>
-            
-            {postsError ? (
-              <div className="error">
-                Error loading posts: {postsError.message}
-              </div>
-            ) : posts ? (
-              <div className="posts-list">
-                {posts.map(post => (
-                  <div key={post.id} className="post-item">
-                    <h3>{post.title}</h3>
-                    <p>{post.excerpt}</p>
-                    <div className="post-actions">
-                      <button 
-                        onClick={() => handleDeletePost(post.id)}
-                        disabled={getOperation(`deletePost-${post.id}`).loading}
-                      >
-                        {getOperation(`deletePost-${post.id}`).loading ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="loading">Loading posts...</div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default AsyncDataComponent;
-```
-
-### **🔄 Server-Side Async Patterns**
+### **📡 API Routes with Async/Await**
 
 ```javascript
 // pages/api/users/[id].js
-import { AsyncErrorHandler } from '../../../utils/asyncErrorHandler';
-import { DatabaseClient } from '../../../utils/database';
-import { CacheManager } from '../../../utils/cache';
+import { AsyncUtils } from '../../../utils/AsyncUtils';
 
-const db = new DatabaseClient();
-const cache = new CacheManager();
+// Database simulation
+const db = {
+  async findUser(id) {
+    await AsyncUtils.sleep(Math.random() * 500);
+    
+    if (Math.random() < 0.1) {
+      throw new Error('Database connection failed');
+    }
+    
+    return {
+      id: parseInt(id),
+      name: `User ${id}`,
+      email: `user${id}@example.com`,
+      createdAt: new Date().toISOString()
+    };
+  },
+  
+  async updateUser(id, updates) {
+    await AsyncUtils.sleep(300);
+    
+    return {
+      id: parseInt(id),
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+  },
+  
+  async deleteUser(id) {
+    await AsyncUtils.sleep(200);
+    return { success: true, deletedId: parseInt(id) };
+  }
+};
+
+// Cache layer
+const userCache = new AsyncCache(60000); // 1 minute cache
 
 export default async function handler(req, res) {
   const { id } = req.query;
+  const userId = parseInt(id);
+  
+  if (isNaN(userId)) {
+    return res.status(400).json({ error: 'Invalid user ID' });
+  }
   
   try {
     switch (req.method) {
       case 'GET':
-        await handleGetUser(req, res, id);
+        await handleGetUser(req, res, userId);
         break;
       case 'PUT':
-        await handleUpdateUser(req, res, id);
+        await handleUpdateUser(req, res, userId);
         break;
       case 'DELETE':
-        await handleDeleteUser(req, res, id);
+        await handleDeleteUser(req, res, userId);
         break;
       default:
         res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
         res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('API error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('API Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
 
 async function handleGetUser(req, res, userId) {
-  const cacheKey = `user:${userId}`;
-  
-  // Try cache first
-  const cached = await cache.get(cacheKey);
-  if (cached) {
-    return res.status(200).json(cached);
+  try {
+    // Try cache first, then database with retry
+    const user = await userCache.get(`user:${userId}`, () =>
+      AsyncUtils.retry(() => db.findUser(userId), {
+        retries: 3,
+        delay: 500
+      })
+    );
+    
+    res.status(200).json({ user });
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      res.status(404).json({ error: 'User not found' });
+    } else {
+      throw error;
+    }
   }
-  
-  // Fetch from database with timeout
-  const user = await AsyncErrorHandler.withTimeout(
-    db.users.findById(userId),
-    5000
-  );
-  
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-  
-  // Parallel fetch related data
-  const [posts, comments, followers] = await Promise.allSettled([
-    db.posts.findByUserId(userId),
-    db.comments.findByUserId(userId),
-    db.follows.getFollowers(userId)
-  ]);
-  
-  const userData = {
-    ...user,
-    postsCount: posts.status === 'fulfilled' ? posts.value.length : 0,
-    commentsCount: comments.status === 'fulfilled' ? comments.value.length : 0,
-    followersCount: followers.status === 'fulfilled' ? followers.value.length : 0
-  };
-  
-  // Cache the result
-  await cache.set(cacheKey, userData, 300); // 5 minutes
-  
-  res.status(200).json(userData);
 }
 
 async function handleUpdateUser(req, res, userId) {
   const updates = req.body;
   
   // Validate updates
-  const validatedUpdates = await validateUserUpdates(updates);
+  const allowedFields = ['name', 'email'];
+  const filteredUpdates = Object.keys(updates)
+    .filter(key => allowedFields.includes(key))
+    .reduce((obj, key) => {
+      obj[key] = updates[key];
+      return obj;
+    }, {});
   
-  // Update with retry
-  const updatedUser = await AsyncErrorHandler.retry(
-    () => db.users.update(userId, validatedUpdates),
-    3,
-    1000
-  );
-  
-  if (!updatedUser) {
-    return res.status(404).json({ error: 'User not found' });
+  if (Object.keys(filteredUpdates).length === 0) {
+    return res.status(400).json({ error: 'No valid fields to update' });
   }
   
-  // Invalidate cache
-  await cache.delete(`user:${userId}`);
-  
-  // Send notifications asynchronously (don't wait)
-  sendUserUpdateNotification(userId, updates).catch(error => {
-    console.error('Notification failed:', error);
-  });
-  
-  res.status(200).json(updatedUser);
-}
-
-async function handleDeleteUser(req, res, userId) {
-  // Start transaction
-  const transaction = await db.beginTransaction();
-  
   try {
-    // Delete related data first
-    await Promise.all([
-      db.posts.deleteByUserId(userId, transaction),
-      db.comments.deleteByUserId(userId, transaction),
-      db.follows.deleteByUserId(userId, transaction)
-    ]);
+    const updatedUser = await AsyncUtils.retry(() => 
+      db.updateUser(userId, filteredUpdates), {
+      retries: 2,
+      delay: 300
+    });
     
-    // Delete user
-    await db.users.delete(userId, transaction);
+    // Invalidate cache
+    userCache.delete(`user:${userId}`);
     
-    // Commit transaction
-    await db.commitTransaction(transaction);
-    
-    // Clean up cache
-    await cache.deletePattern(`user:${userId}*`);
-    
-    res.status(204).end();
-    
+    res.status(200).json({ user: updatedUser });
   } catch (error) {
-    await db.rollbackTransaction(transaction);
     throw error;
   }
 }
 
-// utils/batchProcessor.js
-export class BatchProcessor {
-  constructor(batchSize = 10, delayMs = 100) {
-    this.batchSize = batchSize;
-    this.delayMs = delayMs;
-    this.queue = [];
-    this.processing = false;
-  }
-  
-  async add(item) {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ item, resolve, reject });
-      this.process();
+async function handleDeleteUser(req, res, userId) {
+  try {
+    const result = await AsyncUtils.retry(() => 
+      db.deleteUser(userId), {
+      retries: 2,
+      delay: 300
     });
-  }
-  
-  async process() {
-    if (this.processing || this.queue.length === 0) {
-      return;
-    }
     
-    this.processing = true;
+    // Invalidate cache
+    userCache.delete(`user:${userId}`);
     
-    while (this.queue.length > 0) {
-      const batch = this.queue.splice(0, this.batchSize);
-      
-      try {
-        const results = await this.processBatch(batch.map(b => b.item));
-        
-        batch.forEach((b, index) => {
-          b.resolve(results[index]);
-        });
-        
-      } catch (error) {
-        batch.forEach(b => {
-          b.reject(error);
-        });
-      }
-      
-      if (this.queue.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, this.delayMs));
-      }
-    }
-    
-    this.processing = false;
-  }
-  
-  async processBatch(items) {
-    // Override this method in subclasses
-    throw new Error('processBatch must be implemented');
+    res.status(200).json(result);
+  } catch (error) {
+    throw error;
   }
 }
 
-// Specific batch processor for emails
-export class EmailBatchProcessor extends BatchProcessor {
-  constructor(emailService, batchSize = 50) {
-    super(batchSize, 1000); // 1 second delay between batches
-    this.emailService = emailService;
-  }
-  
-  async processBatch(emails) {
-    return this.emailService.sendBatch(emails);
-  }
-}
-
-// pages/api/notifications/send.js
-const emailProcessor = new EmailBatchProcessor(emailService);
-
+// pages/api/users/batch.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
   
-  const { recipients, subject, message } = req.body;
+  const { userIds, operation } = req.body;
+  
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({ error: 'userIds must be a non-empty array' });
+  }
   
   try {
-    // Process emails in batches
-    const emailPromises = recipients.map(recipient => 
-      emailProcessor.add({
-        to: recipient.email,
-        subject,
-        message,
-        userId: recipient.id
-      })
-    );
+    let results;
     
-    const results = await Promise.allSettled(emailPromises);
+    switch (operation) {
+      case 'fetch':
+        results = await AsyncUtils.mapWithConcurrency(
+          userIds,
+          async (userId) => {
+            try {
+              return await userCache.get(`user:${userId}`, () => 
+                db.findUser(userId)
+              );
+            } catch (error) {
+              return { error: error.message, userId };
+            }
+          },
+          5 // Max 5 concurrent requests
+        );
+        break;
+        
+      case 'delete':
+        results = await AsyncUtils.mapWithConcurrency(
+          userIds,
+          async (userId) => {
+            try {
+              const result = await db.deleteUser(userId);
+              userCache.delete(`user:${userId}`);
+              return result;
+            } catch (error) {
+              return { error: error.message, userId };
+            }
+          },
+          3 // Max 3 concurrent deletions
+        );
+        break;
+        
+      default:
+        return res.status(400).json({ error: 'Invalid operation' });
+    }
     
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
-    
-    res.status(200).json({
-      sent: successful,
-      failed,
-      total: recipients.length
-    });
-    
+    res.status(200).json({ results });
   } catch (error) {
-    console.error('Batch email error:', error);
-    res.status(500).json({ error: 'Failed to send emails' });
+    console.error('Batch operation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
+```
+
+### **🔄 Client-Side Data Fetching**
+
+```jsx
+// hooks/useAsync.js
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+export const useAsync = (asyncFunction, dependencies = []) => {
+  const [state, setState] = useState({
+    data: null,
+    loading: false,
+    error: null
+  });
+  
+  const cancelRef = useRef();
+  
+  const execute = useCallback(async (...args) => {
+    // Cancel previous request
+    if (cancelRef.current) {
+      cancelRef.current();
+    }
+    
+    let cancelled = false;
+    cancelRef.current = () => {
+      cancelled = true;
+    };
+    
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      const result = await asyncFunction(...args);
+      
+      if (!cancelled) {
+        setState({ data: result, loading: false, error: null });
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setState({ data: null, loading: false, error });
+      }
+    }
+  }, dependencies);
+  
+  useEffect(() => {
+    return () => {
+      if (cancelRef.current) {
+        cancelRef.current();
+      }
+    };
+  }, []);
+  
+  return { ...state, execute };
+};
+
+// hooks/useApiData.js
+import { useState, useEffect, useCallback } from 'react';
+
+class ApiClient {
+  constructor(baseURL = '/api') {
+    this.baseURL = baseURL;
+  }
+  
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    };
+    
+    if (config.body && typeof config.body === 'object') {
+      config.body = JSON.stringify(config.body);
+    }
+    
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    
+    return response.json();
+  }
+  
+  get(endpoint, params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+    return this.request(url);
+  }
+  
+  post(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: data
+    });
+  }
+  
+  put(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: data
+    });
+  }
+  
+  delete(endpoint) {
+    return this.request(endpoint, {
+      method: 'DELETE'
+    });
+  }
+}
+
+const apiClient = new ApiClient();
+
+export const useApiData = (endpoint, options = {}) => {
+  const [state, setState] = useState({
+    data: null,
+    loading: true,
+    error: null
+  });
+  
+  const { 
+    params = {}, 
+    enabled = true, 
+    refetchInterval = 0,
+    onSuccess,
+    onError 
+  } = options;
+  
+  const fetchData = useCallback(async () => {
+    if (!enabled) return;
+    
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      const result = await apiClient.get(endpoint, params);
+      setState({ data: result, loading: false, error: null });
+      
+      if (onSuccess) {
+        onSuccess(result);
+      }
+    } catch (error) {
+      setState({ data: null, loading: false, error });
+      
+      if (onError) {
+        onError(error);
+      }
+    }
+  }, [endpoint, JSON.stringify(params), enabled, onSuccess, onError]);
+  
+  useEffect(() => {
+    fetchData();
+    
+    if (refetchInterval > 0) {
+      const interval = setInterval(fetchData, refetchInterval);
+      return () => clearInterval(interval);
+    }
+  }, [fetchData, refetchInterval]);
+  
+  const mutate = useCallback(async (newData) => {
+    setState(prev => ({ ...prev, data: newData }));
+  }, []);
+  
+  const refetch = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
+  
+  return { 
+    ...state, 
+    mutate, 
+    refetch,
+    apiClient 
+  };
+};
+
+// components/UserManager.jsx
+import { useState, useEffect } from 'react';
+import { useApiData } from '../hooks/useApiData';
+
+const UserManager = () => {
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  
+  // Fetch users with pagination and search
+  const { 
+    data: usersData, 
+    loading, 
+    error, 
+    refetch,
+    apiClient 
+  } = useApiData('/users', {
+    params: {
+      search: searchQuery,
+      page,
+      limit: 10
+    },
+    enabled: true,
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+  
+  const users = usersData?.users || [];
+  const totalPages = usersData?.totalPages || 1;
+  
+  // Batch operations
+  const handleBatchDelete = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    if (!confirm(`Delete ${selectedUsers.length} users?`)) return;
+    
+    try {
+      await apiClient.post('/users/batch', {
+        userIds: selectedUsers,
+        operation: 'delete'
+      });
+      
+      setSelectedUsers([]);
+      refetch(); // Refresh the list
+    } catch (error) {
+      alert(`Failed to delete users: ${error.message}`);
+    }
+  };
+  
+  // Individual user operations
+  const handleDeleteUser = async (userId) => {
+    if (!confirm('Delete this user?')) return;
+    
+    try {
+      await apiClient.delete(`/users/${userId}`);
+      refetch();
+    } catch (error) {
+      alert(`Failed to delete user: ${error.message}`);
+    }
+  };
+  
+  const handleUpdateUser = async (userId, updates) => {
+    try {
+      await apiClient.put(`/users/${userId}`, updates);
+      refetch();
+    } catch (error) {
+      alert(`Failed to update user: ${error.message}`);
+    }
+  };
+  
+  // Search with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setPage(1); // Reset to first page on search
+    }, 500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+  
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+  
+  const selectAllUsers = () => {
+    setSelectedUsers(users.map(user => user.id));
+  };
+  
+  const clearSelection = () => {
+    setSelectedUsers([]);
+  };
+  
+  if (loading && !users.length) {
+    return <div className="loading">Loading users...</div>;
+  }
+  
+  if (error) {
+    return (
+      <div className="error">
+        <p>Error loading users: {error.message}</p>
+        <button onClick={refetch}>Retry</button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="user-manager">
+      <div className="controls">
+        <input
+          type="text"
+          placeholder="Search users..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="search-input"
+        />
+        
+        <div className="batch-controls">
+          <span>{selectedUsers.length} users selected</span>
+          <button onClick={selectAllUsers}>Select All</button>
+          <button onClick={clearSelection}>Clear</button>
+          <button 
+            onClick={handleBatchDelete}
+            disabled={selectedUsers.length === 0}
+            className="danger"
+          >
+            Delete Selected
+          </button>
+        </div>
+      </div>
+      
+      <div className="user-list">
+        {users.map(user => (
+          <UserCard
+            key={user.id}
+            user={user}
+            selected={selectedUsers.includes(user.id)}
+            onToggleSelect={() => toggleUserSelection(user.id)}
+            onDelete={() => handleDeleteUser(user.id)}
+            onUpdate={(updates) => handleUpdateUser(user.id, updates)}
+          />
+        ))}
+      </div>
+      
+      <div className="pagination">
+        <button 
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+        >
+          Previous
+        </button>
+        
+        <span>Page {page} of {totalPages}</span>
+        
+        <button 
+          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+        >
+          Next
+        </button>
+      </div>
+      
+      {loading && (
+        <div className="loading-overlay">Refreshing...</div>
+      )}
+    </div>
+  );
+};
+
+const UserCard = ({ user, selected, onToggleSelect, onDelete, onUpdate }) => {
+  const [editing, setEditing] = useState(false);
+  const [editData, setEditData] = useState({ name: user.name, email: user.email });
+  const [updating, setUpdating] = useState(false);
+  
+  const handleSave = async () => {
+    setUpdating(true);
+    try {
+      await onUpdate(editData);
+      setEditing(false);
+    } catch (error) {
+      // Error handled by parent
+    } finally {
+      setUpdating(false);
+    }
+  };
+  
+  const handleCancel = () => {
+    setEditData({ name: user.name, email: user.email });
+    setEditing(false);
+  };
+  
+  return (
+    <div className={`user-card ${selected ? 'selected' : ''}`}>
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onToggleSelect}
+        className="select-checkbox"
+      />
+      
+      {editing ? (
+        <div className="edit-form">
+          <input
+            type="text"
+            value={editData.name}
+            onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Name"
+          />
+          <input
+            type="email"
+            value={editData.email}
+            onChange={(e) => setEditData(prev => ({ ...prev, email: e.target.value }))}
+            placeholder="Email"
+          />
+          <div className="edit-actions">
+            <button onClick={handleSave} disabled={updating}>
+              {updating ? 'Saving...' : 'Save'}
+            </button>
+            <button onClick={handleCancel} disabled={updating}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="user-info">
+          <h3>{user.name}</h3>
+          <p>{user.email}</p>
+          <div className="actions">
+            <button onClick={() => setEditing(true)}>Edit</button>
+            <button onClick={onDelete} className="danger">Delete</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default UserManager;
 ```
 
 ## 🎯 แบบฝึกหัด
 
-### **🔧 แบบฝึกหัดที่ 1: Promise Patterns**
-สร้างฟังก์ชันที่ใช้ Promises:
+### **🔧 แบบฝึกหัดที่ 1: Promise Management**
+สร้างระบบจัดการ Promise:
 
 ```javascript
 // TODO: สร้างฟังก์ชันเหล่านี้
 
-// 1. สร้าง Promise-based cache
-class PromiseCache {
-  // Implement caching with TTL support
-  // Methods: get, set, delete, clear
+// 1. Create a Promise pool with priority queue
+class PromisePriorityQueue {
+  constructor(maxConcurrency = 3) {
+    // Implement priority-based promise execution
+  }
+  
+  add(promiseFactory, priority = 0) {
+    // Add promise with priority (higher number = higher priority)
+  }
 }
 
-// 2. สร้าง rate limiter
-class RateLimiter {
-  // Implement rate limiting using promises
-  // Should delay execution if rate exceeded
+// 2. Implement circuit breaker pattern
+class CircuitBreaker {
+  constructor(threshold = 5, timeout = 60000) {
+    // Implement circuit breaker for failing operations
+  }
+  
+  async execute(operation) {
+    // Execute with circuit breaker logic
+  }
 }
 
-// 3. สร้าง promise pool
-class PromisePool {
-  // Execute promises with concurrency limit
-  // Queue additional promises when pool is full
-}
-
-// 4. สร้าง data pipeline
-function createPipeline(...stages) {
-  // Chain multiple async operations
-  // Each stage receives output from previous stage
+// 3. Create batch processor with retry
+async function processBatch(items, processor, options = {}) {
+  // Process items in batches with retry logic
+  // options: { batchSize, maxRetries, concurrency }
 }
 ```
 
-### **⚡ แบบฝึกหัดที่ 2: Async/Await Applications**
-สร้าง async functions สำหรับ real-world scenarios:
+### **🔄 แบบฝึกหัดที่ 2: Async Data Pipeline**
+สร้าง data processing pipeline:
 
 ```javascript
-// TODO: สร้าง async functions
+// TODO: สร้าง async data pipeline
 
-// 1. File upload with progress
-async function uploadFileWithProgress(file, onProgress) {
-  // Upload file in chunks
-  // Report progress via callback
+class DataPipeline {
+  constructor() {
+    this.steps = [];
+  }
+  
+  addStep(name, processor) {
+    // Add processing step to pipeline
+  }
+  
+  async execute(data) {
+    // Execute all steps sequentially with error handling
+  }
 }
 
-// 2. Data synchronization
-async function syncData(localData, remoteEndpoint) {
-  // Compare local and remote data
-  // Upload changes and download updates
-}
+// Example usage:
+const pipeline = new DataPipeline();
+pipeline.addStep('validate', validateData);
+pipeline.addStep('transform', transformData);
+pipeline.addStep('save', saveData);
 
-// 3. Background task manager
-class TaskManager {
-  // Schedule and execute background tasks
-  // Support task priorities and dependencies
-}
-
-// 4. Real-time data processor
-async function processRealtimeData(dataStream) {
-  // Process streaming data
-  // Handle backpressure and errors
-}
+const result = await pipeline.execute(inputData);
 ```
 
-### **⚛️ แบบฝึกหัดที่ 3: Next.js Integration**
-สร้าง async components และ patterns:
+### **⚛️ แบบฝึกหัดที่ 3: Real-time Data Sync**
+สร้าง real-time synchronization system:
 
 ```jsx
-// TODO: สร้าง components ที่ใช้ async patterns
+// TODO: สร้าง component ที่:
+// 1. Sync data แบบ real-time
+// 2. Handle offline/online states
+// 3. Implement conflict resolution
+// 4. Cache data locally
 
-// 1. InfiniteScroll component
-const InfiniteScroll = ({ fetchMore, hasMore }) => {
-  // Implement infinite scrolling with async data loading
-  // Handle loading states and errors
-};
-
-// 2. AutoSave form
-const AutoSaveForm = ({ initialData, saveFunction }) => {
-  // Auto-save form data with debouncing
-  // Show save status and handle conflicts
-};
-
-// 3. RealTimeChat component
-const RealTimeChat = ({ roomId }) => {
-  // Real-time chat with WebSocket
-  // Handle message sending and receiving
+const RealtimeDataSync = ({ endpoint, children }) => {
+  // Implement real-time data synchronization
+  // Use WebSocket or polling
+  // Handle network interruptions
+  // Provide data to children via context
 };
 ```
 
@@ -1473,8 +1328,8 @@ const RealTimeChat = ({ roomId }) => {
 ## 📚 เอกสารอ้างอิง
 
 - [MDN: Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-- [MDN: async/await](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function)
-- [JavaScript.info: Async/await](https://javascript.info/async-await)
+- [MDN: Async/Await](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function)
+- [JavaScript.info: Promises](https://javascript.info/promise-basics)
 
 ---
 
@@ -1482,10 +1337,10 @@ const RealTimeChat = ({ roomId }) => {
 
 ในบทนี้เราได้เรียนรู้:
 
-- **Promises** และ asynchronous programming patterns
-- **Async/await** syntax และ error handling
-- **Promise combinators** และ advanced patterns
-- **การใช้งานใน Next.js** สำหรับ data fetching
-- **Performance optimization** สำหรับ async operations
+- **Promises** และการจัดการ asynchronous operations
+- **Async/Await** syntax สำหรับโค้ดที่อ่านง่าย
+- **Error Handling** ใน async code
+- **Advanced Promise Patterns** และ utilities
+- **การใช้งานใน Next.js** สำหรับ API routes และ data fetching
 
-Promises และ async/await เป็นพื้นฐานสำคัญของ modern JavaScript ที่ช่วยให้การจัดการ asynchronous code เป็นไปอย่างมีประสิทธิภาพ! 🚀
+Promises และ Async/Await เป็นพื้นฐานสำคัญของ modern JavaScript ที่ช่วยให้การจัดการ asynchronous operations เป็นไปอย่างมีประสิทธิภาพ! 🚀
