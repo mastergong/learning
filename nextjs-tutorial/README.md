@@ -44,8 +44,8 @@
 | [13](./13-app-router.md) | App Router (Next.js 13+) | App Directory, Server Components |
 | [14](./14-server-components.md) | Server Components | RSC, Client vs Server Components |
 | [15](./15-streaming-suspense.md) | Streaming & Suspense | Loading States, Progressive Enhancement |
-| [16](./16-middleware-edge.md) | Middleware & Edge Functions | Edge Runtime, Geolocation |
-| [17](./17-performance-optimization.md) | Performance Optimization | Code Splitting, Bundle Analysis |
+| [16](./16-middleware.md) | Middleware | Authentication, Analytics, Performance |
+| [17](./17-internationalization.md) | Internationalization (i18n) | Multi-language Support, Localization |
 | [18](./18-seo-metadata.md) | SEO and Metadata | Meta Tags, Structured Data, OpenGraph |
 
 ## 🎓 **Expert Level (บทที่ 19-25)**
@@ -53,13 +53,13 @@
 
 | บท | หัวข้อ | เนื้อหาหลัก |
 |-----|--------|-------------|
-| [19](./19-testing-strategies.md) | Testing Strategies | Unit, Integration, E2E Testing |
-| [20](./20-deployment-ci-cd.md) | Deployment & CI/CD | Vercel, Docker, GitHub Actions |
+| [19](./19-testing.md) | Testing | Unit, Integration, E2E Testing |
+| [20](./20-deployment.md) | Deployment and DevOps | Vercel, Docker, CI/CD |
 | [21](./21-monitoring-analytics.md) | Monitoring & Analytics | Performance Monitoring, Error Tracking |
-| [22](./22-internationalization.md) | Internationalization (i18n) | Multi-language Support |
-| [23](./23-advanced-patterns.md) | Advanced Patterns | Design Patterns, Architecture |
-| [24](./24-real-world-project.md) | Real-world Project | Complete Application Build |
-| [25](./25-expert-advice.md) | Expert Advice | Best Practices, Career Tips |
+| [22](./22-advanced-patterns.md) | Advanced Patterns | Design Patterns, Architecture |
+| [23](./23-real-world-project-1.md) | Real-world Project 1 | E-commerce Application |
+| [24](./24-real-world-project-2.md) | Real-world Project 2 | Blog Platform |
+| [25](./25-expert-tips.md) | Expert Tips & Best Practices | Career Advice, Industry Standards |
 
 ### 🛠️ เครื่องมือและเทคโนโลยีที่จะใช้
 
