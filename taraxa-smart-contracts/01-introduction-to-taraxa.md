@@ -14,7 +14,7 @@
 
 ```mermaid
 graph TD
-    ก[Taraxa Network] --> ก[PBFT Consensus]
+    ก[Taraxa Network] --> B[PBFT Consensus]
     ก --> C[DAG Technology]  
     ก --> D[EVM Compatible]
     ก --> E[Anchor Chain]
