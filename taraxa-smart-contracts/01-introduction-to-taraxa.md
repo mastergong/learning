@@ -31,7 +31,13 @@ graph TD
     E --> L[Ethereum Security]
     E --> M[Periodic Finalization]
 ```
-
+```mermaid
+flowchart LR
+        A(["Start"])
+        A --> B{"Decision"}
+        B --> C["Option A"]
+        B --> D["Option B"]
+```
 ## 🏗️ Taraxa Architecture
 
 ### **🔄 Dual-Layer Design**
