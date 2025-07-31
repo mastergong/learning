@@ -14,10 +14,10 @@
 
 ```mermaid
 graph TD
-    A[Taraxa Network] --> B[PBFT Consensus]
-    A --> C[DAG Technology]  
-    A --> D[EVM Compatible]
-    A --> E[Anchor Chain]
+    ก[Taraxa Network] --> ก[PBFT Consensus]
+    ก --> C[DAG Technology]  
+    ก --> D[EVM Compatible]
+    ก --> E[Anchor Chain]
     
     B --> F[True Finality]
     B --> G[No Forks]
